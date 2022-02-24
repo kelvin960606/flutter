@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -174,6 +175,29 @@ void main() {
 
       final Evaluation result = await textContrastGuideline.evaluate(tester);
       expect(result.passed, true);
+      handle.dispose();
+    });
+
+    testWidgets('Disabled button is excluded from text contrast guideline', (WidgetTester tester) async {
+      // Regression test https://github.com/flutter/flutter/issues/94428
+      final SemanticsHandle handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        _boilerplate(
+          ElevatedButton(
+            onPressed: null,
+            child: Container(
+              width: 200.0,
+              height: 200.0,
+              color: Colors.yellow,
+              child: const Text(
+                'this is a test',
+                style: TextStyle(fontSize: 14.0, color: Colors.yellowAccent),
+              ),
+            ),
+          ),
+        )
+      );
+      await expectLater(tester, meetsGuideline(textContrastGuideline));
       handle.dispose();
     });
   });
@@ -518,6 +542,35 @@ void main() {
       expect(overlappingRightResult.passed, true);
       handle.dispose();
     });
+
+    testWidgets('Does not fail on links', (WidgetTester tester) async {
+      Widget textWithLink() {
+        return Builder(
+          builder: (BuildContext context) {
+            return RichText(
+              text: TextSpan(
+                children: <InlineSpan>[
+                  const TextSpan(
+                    text: 'See examples at ',
+                  ),
+                  TextSpan(
+                    text: 'flutter repo',
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () { },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      }
+
+      final SemanticsHandle handle = tester.ensureSemantics();
+      await tester.pumpWidget(_boilerplate(textWithLink()));
+
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+      handle.dispose();
+    });
   });
 
   group('Labeled tappable node guideline', () {
@@ -525,9 +578,9 @@ void main() {
       final SemanticsHandle handle = tester.ensureSemantics();
       await tester.pumpWidget(_boilerplate(Semantics(
         container: true,
-        child: const SizedBox(width: 10.0, height: 10.0),
         onTap: () { },
         label: 'test',
+        child: const SizedBox(width: 10.0, height: 10.0),
       )));
       final Evaluation result = await labeledTapTargetGuideline.evaluate(tester);
       expect(result.passed, true);
@@ -537,9 +590,9 @@ void main() {
       final SemanticsHandle handle = tester.ensureSemantics();
       await tester.pumpWidget(_boilerplate(Semantics(
         container: true,
-        child: const SizedBox(width: 10.0, height: 10.0),
         onLongPress: () { },
         label: '',
+        child: const SizedBox(width: 10.0, height: 10.0),
       )));
       final Evaluation result = await labeledTapTargetGuideline.evaluate(tester);
       expect(result.passed, false);
@@ -550,9 +603,9 @@ void main() {
       final SemanticsHandle handle = tester.ensureSemantics();
       await tester.pumpWidget(_boilerplate(Semantics(
         container: true,
-        child: const SizedBox(width: 10.0, height: 10.0),
         onTap: () { },
         label: '',
+        child: const SizedBox(width: 10.0, height: 10.0),
       )));
       final Evaluation result = await labeledTapTargetGuideline.evaluate(tester);
       expect(result.passed, false);

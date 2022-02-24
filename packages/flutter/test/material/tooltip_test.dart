@@ -4,30 +4,32 @@
 
 import 'dart:ui';
 
-import 'package:flutter/services.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import '../rendering/mock_canvas.dart';
 import '../widgets/semantics_tester.dart';
 import 'feedback_tester.dart';
 
-// This file uses "as dynamic" in a few places to defeat the static
-// analysis. In general you want to avoid using this style in your
-// code, as it will cause the analyzer to be unable to help you catch
-// errors.
-//
-// In this case, we do it because we are trying to call internal
-// methods of the tooltip code in order to test it. Normally, the
-// state of a tooltip is a private class, but by using a GlobalKey we
-// can get a handle to that object and by using "as dynamic" we can
-// bypass the analyzer's type checks and call methods that we aren't
-// supposed to be able to know about.
-//
-// It's ok to do this in tests, but you really don't want to do it in
-// production code.
+void _ensureTooltipVisible(GlobalKey key) {
+  // This function uses "as dynamic"to defeat the static analysis. In general
+  // you want to avoid using this style in your code, as it will cause the
+  // analyzer to be unable to help you catch errors.
+  //
+  // In this case, we do it because we are trying to call internal methods of
+  // the tooltip code in order to test it. Normally, the state of a tooltip is a
+  // private class, but by using a GlobalKey we can get a handle to that object
+  // and by using "as dynamic" we can bypass the analyzer's type checks and call
+  // methods that we aren't supposed to be able to know about.
+  //
+  // It's ok to do this in tests, but you really don't want to do it in
+  // production code.
+  // ignore: avoid_dynamic_calls
+  (key.currentState as dynamic).ensureTooltipVisible();
+}
 
 const String tooltipText = 'TIP';
 
@@ -74,7 +76,7 @@ void main() {
         ),
       ),
     );
-    (key.currentState as dynamic).ensureTooltipVisible(); // Before using "as dynamic" in your code, see note at the top of the file.
+    _ensureTooltipVisible(key);
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
     /********************* 800x600 screen
@@ -134,7 +136,7 @@ void main() {
         ),
       ),
     );
-    (key.currentState as dynamic).ensureTooltipVisible(); // Before using "as dynamic" in your code, see note at the top of the file.
+    _ensureTooltipVisible(key);
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
     /************************ 800x600 screen
@@ -193,7 +195,7 @@ void main() {
         ),
       ),
     );
-    (key.currentState as dynamic).ensureTooltipVisible(); // Before using "as dynamic" in your code, see note at the top of the file.
+    _ensureTooltipVisible(key);
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
     /********************* 800x600 screen
@@ -247,7 +249,7 @@ void main() {
         ),
       ),
     );
-    (key.currentState as dynamic).ensureTooltipVisible(); // Before using "as dynamic" in your code, see note at the top of the file.
+    _ensureTooltipVisible(key);
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
     /********************* 800x600 screen
@@ -303,7 +305,7 @@ void main() {
         ),
       ),
     );
-    (key.currentState as dynamic).ensureTooltipVisible(); // Before using "as dynamic" in your code, see note at the top of the file.
+    _ensureTooltipVisible(key);
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
     // we try to put it here but it doesn't fit:
@@ -370,7 +372,7 @@ void main() {
         ),
       ),
     );
-    (key.currentState as dynamic).ensureTooltipVisible(); // Before using "as dynamic" in your code, see note at the top of the file.
+    _ensureTooltipVisible(key);
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
     /********************* 800x600 screen
@@ -425,7 +427,7 @@ void main() {
         ),
       ),
     );
-    (key.currentState as dynamic).ensureTooltipVisible(); // Before using "as dynamic" in your code, see note at the top of the file.
+    _ensureTooltipVisible(key);
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
     /********************* 800x600 screen
@@ -482,7 +484,7 @@ void main() {
         ),
       ),
     );
-    (key.currentState as dynamic).ensureTooltipVisible(); // Before using "as dynamic" in your code, see note at the top of the file.
+    _ensureTooltipVisible(key);
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
     /********************* 800x600 screen
@@ -530,7 +532,7 @@ void main() {
         ),
       ),
     );
-    (key.currentState as dynamic).ensureTooltipVisible(); // Before using "as dynamic" in your code, see note at the top of the file.
+    _ensureTooltipVisible(key);
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
     final Offset topLeftTipInGlobal = tester.getTopLeft(
@@ -575,14 +577,14 @@ void main() {
         ),
       ),
     ));
-    (key.currentState as dynamic).ensureTooltipVisible(); // Before using "as dynamic" in your code, see note at the top of the file.
+    _ensureTooltipVisible(key);
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
     final TextStyle textStyle = tester.widget<Text>(find.text(tooltipText)).style!;
     expect(textStyle.color, Colors.white);
     expect(textStyle.fontFamily, 'Roboto');
     expect(textStyle.decoration, TextDecoration.none);
-    expect(textStyle.debugLabel, '((englishLike body1 2014).merge(blackMountainView bodyText2)).copyWith');
+    expect(textStyle.debugLabel, '((englishLike bodyMedium 2014).merge(blackMountainView bodyMedium)).copyWith');
   });
 
   testWidgets('Default tooltip message textStyle - dark', (WidgetTester tester) async {
@@ -601,14 +603,14 @@ void main() {
         ),
       ),
     ));
-    (key.currentState as dynamic).ensureTooltipVisible(); // Before using "as dynamic" in your code, see note at the top of the file.
+    _ensureTooltipVisible(key);
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
     final TextStyle textStyle = tester.widget<Text>(find.text(tooltipText)).style!;
     expect(textStyle.color, Colors.black);
     expect(textStyle.fontFamily, 'Roboto');
     expect(textStyle.decoration, TextDecoration.none);
-    expect(textStyle.debugLabel, '((englishLike body1 2014).merge(whiteMountainView bodyText2)).copyWith');
+    expect(textStyle.debugLabel, '((englishLike bodyMedium 2014).merge(whiteMountainView bodyMedium)).copyWith');
   });
 
   testWidgets('Custom tooltip message textStyle', (WidgetTester tester) async {
@@ -628,7 +630,7 @@ void main() {
         ),
       ),
     ));
-    (key.currentState as dynamic).ensureTooltipVisible(); // Before using "as dynamic" in your code, see note at the top of the file.
+    _ensureTooltipVisible(key);
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
     final TextStyle textStyle = tester.widget<Text>(find.text(tooltipText)).style!;
@@ -686,7 +688,7 @@ void main() {
         ),
       ),
     ));
-    (key.currentState as dynamic).ensureTooltipVisible(); // Before using "as dynamic" in your code, see note at the top of the file.
+    _ensureTooltipVisible(key);
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
     final TextStyle textStyle = tester.widget<DefaultTextStyle>(
@@ -726,7 +728,7 @@ void main() {
         ),
       ),
     );
-    (key.currentState as dynamic).ensureTooltipVisible(); // Before using "as dynamic" in your code, see note at the top of the file.
+    _ensureTooltipVisible(key);
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
     final RenderBox tip = tester.renderObject(
@@ -755,6 +757,7 @@ void main() {
         ),
       ),
     );
+    // ignore: avoid_dynamic_calls
     (key.currentState as dynamic).ensureTooltipVisible();
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
@@ -800,7 +803,7 @@ void main() {
         ),
       ),
     );
-    (key.currentState as dynamic).ensureTooltipVisible(); // Before using "as dynamic" in your code, see note at the top of the file.
+    _ensureTooltipVisible(key);
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
     final RenderBox tip = tester.renderObject(
@@ -912,6 +915,234 @@ void main() {
     expect(find.text(tooltipText), findsNothing);
   });
 
+  testWidgets('Tooltip text is also hoverable', (WidgetTester tester) async {
+    const Duration waitDuration = Duration.zero;
+    TestGesture? gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(() async {
+      gesture?.removePointer();
+    });
+    await gesture.addPointer();
+    await gesture.moveTo(const Offset(1.0, 1.0));
+    await tester.pump();
+    await gesture.moveTo(Offset.zero);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Center(
+          child: Tooltip(
+            message: tooltipText,
+            waitDuration: waitDuration,
+            child: Text('I am tool tip'),
+          ),
+        ),
+      ),
+    );
+
+    final Finder tooltip = find.byType(Tooltip);
+    await gesture.moveTo(Offset.zero);
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(tooltip));
+    await tester.pump();
+    // Wait for it to appear.
+    await tester.pump(waitDuration);
+    expect(find.text(tooltipText), findsOneWidget);
+
+    // Wait a looong time to make sure that it doesn't go away if the mouse is
+    // still over the widget.
+    await tester.pump(const Duration(days: 1));
+    await tester.pumpAndSettle();
+    expect(find.text(tooltipText), findsOneWidget);
+
+    // Hover to the tool tip text and verify the tooltip doesn't go away.
+    await gesture.moveTo(tester.getTopLeft(find.text(tooltipText)));
+    await tester.pump(const Duration(days: 1));
+    await tester.pumpAndSettle();
+    expect(find.text(tooltipText), findsOneWidget);
+
+    await gesture.moveTo(Offset.zero);
+    await tester.pump();
+
+    // Wait for it to disappear.
+    await tester.pumpAndSettle();
+    await gesture.removePointer();
+    gesture = null;
+    expect(find.text(tooltipText), findsNothing);
+  });
+
+  testWidgets('Tooltip should not show more than one tooltip when hovered', (WidgetTester tester) async {
+    const Duration waitDuration = Duration(milliseconds: 500);
+    final UniqueKey innerKey = UniqueKey();
+    final UniqueKey outerKey = UniqueKey();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: Tooltip(
+            message: 'Outer',
+            child: Container(
+              key: outerKey,
+              width: 100,
+              height: 100,
+              alignment: Alignment.centerRight,
+              child: Tooltip(
+                message: 'Inner',
+                child: SizedBox(
+                  key: innerKey,
+                  width: 25,
+                  height: 100,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    TestGesture? gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(() async { gesture?.removePointer(); });
+
+    // Both the inner and outer containers have tooltips associated with them, but only
+    // the currently hovered one should appear, even though the pointer is inside both.
+    final Finder outer = find.byKey(outerKey);
+    final Finder inner = find.byKey(innerKey);
+    await gesture.moveTo(Offset.zero);
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(outer));
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(inner));
+    await tester.pump();
+
+    // Wait for it to appear.
+    await tester.pump(waitDuration);
+
+    expect(find.text('Outer'), findsNothing);
+    expect(find.text('Inner'), findsOneWidget);
+    await gesture.moveTo(tester.getCenter(outer));
+    await tester.pump();
+    // Wait for it to switch.
+    await tester.pump(waitDuration);
+    expect(find.text('Outer'), findsOneWidget);
+    expect(find.text('Inner'), findsNothing);
+
+    await gesture.moveTo(Offset.zero);
+
+    // Wait for all tooltips to disappear.
+    await tester.pumpAndSettle();
+    await gesture.removePointer();
+    gesture = null;
+    expect(find.text('Outer'), findsNothing);
+    expect(find.text('Inner'), findsNothing);
+  });
+
+  testWidgets('Tooltip can be dismissed by escape key', (WidgetTester tester) async {
+    const Duration waitDuration = Duration.zero;
+    TestGesture? gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(() async {
+      if (gesture != null)
+        return gesture.removePointer();
+    });
+    await gesture.addPointer();
+    await gesture.moveTo(const Offset(1.0, 1.0));
+    await tester.pump();
+    await gesture.moveTo(Offset.zero);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Center(
+          child: Tooltip(
+            message: tooltipText,
+            waitDuration: waitDuration,
+            child: Text('I am tool tip'),
+          ),
+        ),
+      ),
+    );
+
+    final Finder tooltip = find.byType(Tooltip);
+    await gesture.moveTo(Offset.zero);
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(tooltip));
+    await tester.pump();
+    // Wait for it to appear.
+    await tester.pump(waitDuration);
+    expect(find.text(tooltipText), findsOneWidget);
+
+    // Try to dismiss the tooltip with the shortcut key
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.text(tooltipText), findsNothing);
+
+    await gesture.moveTo(Offset.zero);
+    await tester.pumpAndSettle();
+    await gesture.removePointer();
+    gesture = null;
+  });
+
+  testWidgets('Multiple Tooltips are dismissed by escape key', (WidgetTester tester) async {
+    const Duration waitDuration = Duration.zero;
+    TestGesture? gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(() async {
+      if (gesture != null)
+        return gesture.removePointer();
+    });
+    await gesture.addPointer();
+    await gesture.moveTo(const Offset(1.0, 1.0));
+    await tester.pump();
+    await gesture.moveTo(Offset.zero);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: Column(
+            children: const <Widget>[
+              Tooltip(
+                message: 'message1',
+                waitDuration: waitDuration,
+                showDuration: Duration(days: 1),
+                child: Text('tooltip1'),
+              ),
+              Spacer(flex: 2),
+              Tooltip(
+                message: 'message2',
+                waitDuration: waitDuration,
+                showDuration: Duration(days: 1),
+                child: Text('tooltip2'),
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final Finder tooltip = find.text('tooltip1');
+    await gesture.moveTo(Offset.zero);
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(tooltip));
+    await tester.pump();
+    await tester.pump(waitDuration);
+    expect(find.text('message1'), findsOneWidget);
+
+    final Finder secondTooltip = find.text('tooltip2');
+    await gesture.moveTo(Offset.zero);
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(secondTooltip));
+    await tester.pump();
+    await tester.pump(waitDuration);
+    // Make sure both messages are on the screen.
+    expect(find.text('message1'), findsOneWidget);
+    expect(find.text('message2'), findsOneWidget);
+
+    // Try to dismiss the tooltip with the shortcut key
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.text('message1'), findsNothing);
+    expect(find.text('message2'), findsNothing);
+
+    await gesture.moveTo(Offset.zero);
+    await tester.pumpAndSettle();
+    await gesture.removePointer();
+    gesture = null;
+  });
+
   testWidgets('Tooltip does not attempt to show after unmount', (WidgetTester tester) async {
     // Regression test for https://github.com/flutter/flutter/issues/54096.
     const Duration waitDuration = Duration(seconds: 1);
@@ -1002,8 +1233,8 @@ void main() {
 
     expect(semantics, hasSemantics(expected, ignoreTransform: true, ignoreRect: true));
 
-    // Before using "as dynamic" in your code, see note at the top of the file.
-    (key.currentState as dynamic).ensureTooltipVisible(); // this triggers a rebuild of the semantics because the tree changes
+    // This triggers a rebuild of the semantics because the tree changes.
+    _ensureTooltipVisible(key);
 
     await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
 
@@ -1061,7 +1292,7 @@ void main() {
                       ),
                     ),
                   );
-                }
+                },
               );
             },
           ),
@@ -1086,6 +1317,63 @@ void main() {
       _findTooltipContainer(tooltipText),
     );
     expect(tip.size.height, equals(56.0));
+  });
+
+  testWidgets('Tooltip text displays with richMessage', (WidgetTester tester) async {
+    final GlobalKey key = GlobalKey();
+    const String textSpan1Text = 'I am a rich tooltip message. ';
+    const String textSpan2Text = 'I am another span of a rich tooltip message';
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Tooltip(
+          key: key,
+          richMessage: const TextSpan(
+            text: textSpan1Text,
+            children: <InlineSpan>[
+              TextSpan(
+                text: textSpan2Text,
+              ),
+            ],
+          ),
+          child: Container(
+            width: 100.0,
+            height: 100.0,
+            color: Colors.green[500],
+          ),
+        ),
+      ),
+    );
+    _ensureTooltipVisible(key);
+    await tester.pump(const Duration(seconds: 2)); // faded in, show timer started (and at 0.0)
+
+    final RichText richText = tester.widget<RichText>(find.byType(RichText));
+    expect(richText.text.toPlainText(), equals('$textSpan1Text$textSpan2Text'));
+  });
+
+  testWidgets('Tooltip throws assertion error when both message and richMessage are specified', (WidgetTester tester) async {
+    expect(
+      () {
+        MaterialApp(
+          home: Tooltip(
+            message: 'I am a tooltip message.',
+            richMessage: const TextSpan(
+              text: 'I am a rich tooltip.',
+              children: <InlineSpan>[
+                TextSpan(
+                  text: 'I am another span of a rich tooltip.',
+                ),
+              ],
+            ),
+            child: Container(
+              width: 100.0,
+              height: 100.0,
+              color: Colors.green[500],
+            ),
+          ),
+        );
+      },
+      throwsA(const TypeMatcher<AssertionError>()),
+    );
   });
 
   testWidgets('Haptic feedback', (WidgetTester tester) async {
@@ -1159,8 +1447,8 @@ void main() {
         home: Center(
           child: Tooltip(
             message: 'Foo',
-            child: Text('Bar'),
             excludeFromSemantics: true,
+            child: Text('Bar'),
           ),
         ),
       ),
@@ -1193,7 +1481,7 @@ void main() {
 
   testWidgets('has semantic events', (WidgetTester tester) async {
     final List<dynamic> semanticEvents = <dynamic>[];
-    SystemChannels.accessibility.setMockMessageHandler((dynamic message) async {
+    tester.binding.defaultBinaryMessenger.setMockDecodedMessageHandler<dynamic>(SystemChannels.accessibility, (dynamic message) async {
       semanticEvents.add(message);
     });
     final SemanticsTester semantics = SemanticsTester(tester);
@@ -1230,7 +1518,7 @@ void main() {
       },
     ]));
     semantics.dispose();
-    SystemChannels.accessibility.setMockMessageHandler(null);
+    tester.binding.defaultBinaryMessenger.setMockDecodedMessageHandler<dynamic>(SystemChannels.accessibility, null);
   });
   testWidgets('default Tooltip debugFillProperties', (WidgetTester tester) async {
     final DiagnosticPropertiesBuilder builder = DiagnosticPropertiesBuilder();
@@ -1243,6 +1531,28 @@ void main() {
 
     expect(description, <String>[
       '"message"',
+    ]);
+  });
+  testWidgets('default Tooltip debugFillProperties with richMessage', (WidgetTester tester) async {
+    final DiagnosticPropertiesBuilder builder = DiagnosticPropertiesBuilder();
+
+    const Tooltip(
+      richMessage: TextSpan(
+        text: 'This is a ',
+        children: <InlineSpan>[
+          TextSpan(
+            text: 'richMessage',
+          ),
+        ],
+      ),
+    ).debugFillProperties(builder);
+
+    final List<String> description = builder.properties
+        .where((DiagnosticsNode node) => !node.isFiltered(DiagnosticLevel.info))
+        .map((DiagnosticsNode node) => node.toString()).toList();
+
+    expect(description, <String>[
+      '"This is a richMessage"',
     ]);
   });
   testWidgets('Tooltip implements debugFillProperties', (WidgetTester tester) async {
@@ -1261,6 +1571,8 @@ void main() {
       excludeFromSemantics: true,
       preferBelow: false,
       verticalOffset: 50.0,
+      triggerMode: TooltipTriggerMode.manual,
+      enableFeedback: true,
     ).debugFillProperties(builder);
 
     final List<String> description = builder.properties
@@ -1277,8 +1589,107 @@ void main() {
       'semantics: excluded',
       'wait duration: 0:00:01.000000',
       'show duration: 0:00:02.000000',
+      'triggerMode: TooltipTriggerMode.manual',
+      'enableFeedback: true',
     ]);
   });
+
+  testWidgets('Tooltip triggers on tap when trigger mode is tap', (WidgetTester tester) async {
+    await setWidgetForTooltipMode(tester, TooltipTriggerMode.tap);
+
+    final Finder tooltip = find.byType(Tooltip);
+    expect(find.text(tooltipText), findsNothing);
+
+    await testGestureTap(tester, tooltip);
+    expect(find.text(tooltipText), findsOneWidget);
+  });
+
+  testWidgets('Tooltip triggers on long press when mode is long press', (WidgetTester tester) async {
+    await setWidgetForTooltipMode(tester, TooltipTriggerMode.longPress);
+
+    final Finder tooltip = find.byType(Tooltip);
+    expect(find.text(tooltipText), findsNothing);
+
+    await testGestureTap(tester, tooltip);
+    expect(find.text(tooltipText), findsNothing);
+
+    await testGestureLongPress(tester, tooltip);
+    expect(find.text(tooltipText), findsOneWidget);
+  });
+
+  testWidgets('Tooltip does not trigger on tap when trigger mode is longPress', (WidgetTester tester) async {
+    await setWidgetForTooltipMode(tester, TooltipTriggerMode.longPress);
+
+    final Finder tooltip = find.byType(Tooltip);
+    expect(find.text(tooltipText), findsNothing);
+
+    await testGestureTap(tester, tooltip);
+    expect(find.text(tooltipText), findsNothing);
+  });
+
+  testWidgets('Tooltip does not trigger when trigger mode is manual', (WidgetTester tester) async {
+    await setWidgetForTooltipMode(tester, TooltipTriggerMode.manual);
+
+    final Finder tooltip = find.byType(Tooltip);
+    expect(find.text(tooltipText), findsNothing);
+
+    await testGestureTap(tester, tooltip);
+    expect(find.text(tooltipText), findsNothing);
+
+    await testGestureLongPress(tester, tooltip);
+    expect(find.text(tooltipText), findsNothing);
+  });
+
+  testWidgets('Tooltip should not be shown with empty message (with child)', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Tooltip(
+          message: tooltipText,
+          child: Text(tooltipText),
+        ),
+      ),
+    );
+    expect(find.text(tooltipText), findsOneWidget);
+  });
+
+  testWidgets('Tooltip should not be shown with empty message (without child)', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Tooltip(
+          message: tooltipText,
+        ),
+      ),
+    );
+    expect(find.text(tooltipText), findsNothing);
+    if (tooltipText.isEmpty) {
+      expect(find.byType(SizedBox), findsOneWidget);
+    }
+  });
+}
+
+Future<void> setWidgetForTooltipMode(WidgetTester tester, TooltipTriggerMode triggerMode) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Tooltip(
+        message: tooltipText,
+        triggerMode: triggerMode,
+        child: const SizedBox(width: 100.0, height: 100.0),
+      ),
+    ),
+  );
+}
+
+Future<void> testGestureLongPress(WidgetTester tester, Finder tooltip) async {
+  final TestGesture gestureLongPress = await tester.startGesture(tester.getCenter(tooltip));
+  await tester.pump();
+  await tester.pump(kLongPressTimeout);
+  await gestureLongPress.up();
+  await tester.pump();
+}
+
+Future<void> testGestureTap(WidgetTester tester, Finder tooltip) async {
+  await tester.tap(tooltip);
+  await tester.pump(const Duration(milliseconds: 10));
 }
 
 SemanticsNode findDebugSemantics(RenderObject object) {

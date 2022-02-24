@@ -18,7 +18,8 @@ import 'viewport_offset.dart';
 
 // Trims the specified edges of the given `Rect` [original], so that they do not
 // exceed the given values.
-Rect? _trim(Rect? original, {
+Rect? _trim(
+  Rect? original, {
   double top = -double.infinity,
   double right = double.infinity,
   double bottom = double.infinity,
@@ -497,23 +498,10 @@ class FloatingHeaderSnapConfiguration {
   /// Creates an object that specifies how a floating header is to be "snapped"
   /// (animated) into or out of view.
   FloatingHeaderSnapConfiguration({
-    @Deprecated(
-      'Specify SliverPersistentHeaderDelegate.vsync instead. '
-      'This feature was deprecated after v1.19.0.',
-    )
-    this.vsync,
     this.curve = Curves.ease,
     this.duration = const Duration(milliseconds: 300),
   }) : assert(curve != null),
        assert(duration != null);
-
-  /// The [TickerProvider] for the [AnimationController] that causes a floating
-  /// header to snap in or out of view.
-  @Deprecated(
-    'Specify SliverPersistentHeaderDelegate.vsync instead. '
-    'This feature was deprecated after v1.19.0.',
-  )
-  final TickerProvider? vsync;
 
   /// The snap animation curve.
   final Curve curve;
@@ -550,6 +538,10 @@ abstract class RenderSliverFloatingPersistentHeader extends RenderSliverPersiste
   late Animation<double> _animation;
   double? _lastActualScrollOffset;
   double? _effectiveScrollOffset;
+  // Important for pointer scrolling, which does not have the same concept of
+  // a hold and release scroll movement, like dragging.
+  // This keeps track of the last ScrollDirection when scrolling started.
+  ScrollDirection? _lastStartedScrollDirection;
 
   // Distance from our leading edge to the child's leading edge, in the axis
   // direction. Negative if we're scrolled off the top.
@@ -632,12 +624,12 @@ abstract class RenderSliverFloatingPersistentHeader extends RenderSliverPersiste
 
     final AnimationController effectiveController =
       _controller ??= AnimationController(vsync: vsync!, duration: duration)
-                        ..addListener(() {
-      if (_effectiveScrollOffset == _animation.value)
-        return;
-      _effectiveScrollOffset = _animation.value;
-      markNeedsLayout();
-    });
+        ..addListener(() {
+            if (_effectiveScrollOffset == _animation.value)
+              return;
+            _effectiveScrollOffset = _animation.value;
+            markNeedsLayout();
+          });
 
     _animation = effectiveController.drive(
       Tween<double>(
@@ -645,6 +637,12 @@ abstract class RenderSliverFloatingPersistentHeader extends RenderSliverPersiste
         end: endValue,
       ).chain(CurveTween(curve: curve)),
     );
+  }
+
+  /// Update the last known ScrollDirection when scrolling began.
+  // ignore: use_setters_to_change_properties, (API predates enforcing the lint)
+  void updateScrollStartDirection(ScrollDirection direction) {
+    _lastStartedScrollDirection = direction;
   }
 
   /// If the header isn't already fully exposed, then scroll it into view.
@@ -680,7 +678,8 @@ abstract class RenderSliverFloatingPersistentHeader extends RenderSliverPersiste
          (_effectiveScrollOffset! < maxExtent))) { // some part of it is visible, so should shrink or reveal as appropriate.
       double delta = _lastActualScrollOffset! - constraints.scrollOffset;
 
-      final bool allowFloatingExpansion = constraints.userScrollDirection == ScrollDirection.forward;
+      final bool allowFloatingExpansion = constraints.userScrollDirection == ScrollDirection.forward
+        || (_lastStartedScrollDirection != null && _lastStartedScrollDirection == ScrollDirection.forward);
       if (allowFloatingExpansion) {
         if (_effectiveScrollOffset! > maxExtent) // We're scrolled off-screen, but should reveal, so
           _effectiveScrollOffset = maxExtent; // pretend we're just at the limit.

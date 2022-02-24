@@ -12,14 +12,16 @@ import '../base/deferred_component.dart';
 import '../base/file_system.dart';
 import '../build_info.dart';
 import '../cache.dart';
-import '../globals_null_migrated.dart' as globals;
+import '../globals.dart' as globals;
 import '../project.dart';
 import '../reporting/reporting.dart';
 import '../runner/flutter_command.dart' show FlutterCommandResult;
 import 'build.dart';
 
 class BuildAppBundleCommand extends BuildSubCommand {
-  BuildAppBundleCommand({bool verboseHelp = false}) {
+  BuildAppBundleCommand({
+    bool verboseHelp = false,
+  }) : super(verboseHelp: verboseHelp) {
     addTreeShakeIconsFlag();
     usesTargetOption();
     addBuildModeFlags(verboseHelp: verboseHelp);
@@ -39,6 +41,8 @@ class BuildAppBundleCommand extends BuildSubCommand {
     addEnableExperimentation(hide: !verboseHelp);
     usesAnalyzeSizeFlag();
     addAndroidSpecificBuildOptions(hide: !verboseHelp);
+    addMultidexOption();
+    addIgnoreDeprecationOption();
     argParser.addMultiOption('target-platform',
       splitCommas: true,
       defaultsTo: <String>['android-arm', 'android-arm64', 'android-x64'],
@@ -70,6 +74,9 @@ class BuildAppBundleCommand extends BuildSubCommand {
   final String name = 'appbundle';
 
   @override
+  DeprecationBehavior get deprecationBehavior => boolArg('ignore-deprecation') ? DeprecationBehavior.ignore : DeprecationBehavior.exit;
+
+  @override
   Future<Set<DevelopmentArtifact>> get requiredArtifacts async => <DevelopmentArtifact>{
     DevelopmentArtifact.androidGenSnapshot,
   };
@@ -82,23 +89,24 @@ class BuildAppBundleCommand extends BuildSubCommand {
       'suitable for deploying to app stores. \n app bundle improves your app size';
 
   @override
-  Future<Map<CustomDimensions, String>> get usageValues async {
-    final Map<CustomDimensions, String> usage = <CustomDimensions, String>{};
-
-    usage[CustomDimensions.commandBuildAppBundleTargetPlatform] =
-        stringsArg('target-platform').join(',');
+  Future<CustomDimensions> get usageValues async {
+    String buildMode;
 
     if (boolArg('release')) {
-      usage[CustomDimensions.commandBuildAppBundleBuildMode] = 'release';
+      buildMode = 'release';
     } else if (boolArg('debug')) {
-      usage[CustomDimensions.commandBuildAppBundleBuildMode] = 'debug';
+      buildMode = 'debug';
     } else if (boolArg('profile')) {
-      usage[CustomDimensions.commandBuildAppBundleBuildMode] = 'profile';
+      buildMode = 'profile';
     } else {
       // The build defaults to release.
-      usage[CustomDimensions.commandBuildAppBundleBuildMode] = 'release';
+      buildMode = 'release';
     }
-    return usage;
+
+    return CustomDimensions(
+      commandBuildAppBundleTargetPlatform: stringsArg('target-platform').join(','),
+      commandBuildAppBundleBuildMode: buildMode,
+    );
   }
 
   @override
@@ -109,6 +117,7 @@ class BuildAppBundleCommand extends BuildSubCommand {
 
     final AndroidBuildInfo androidBuildInfo = AndroidBuildInfo(await getBuildInfo(),
       targetArchs: stringsArg('target-platform').map<AndroidArch>(getAndroidArchForName),
+      multidexEnabled: boolArg('multidex'),
     );
     // Do all setup verification that doesn't involve loading units. Checks that
     // require generated loading units are done after gen_snapshot in assemble.
@@ -118,7 +127,6 @@ class BuildAppBundleCommand extends BuildSubCommand {
         globals.logger,
         globals.platform,
         title: 'Deferred components prebuild validation',
-        exitOnFail: true,
       );
       validator.clearOutputDir();
       await validator.checkAndroidDynamicFeature(FlutterProject.current().manifest.deferredComponents);
@@ -144,6 +152,7 @@ class BuildAppBundleCommand extends BuildSubCommand {
 
     validateBuild(androidBuildInfo);
     displayNullSafetyMode(androidBuildInfo.buildInfo);
+    globals.terminal.usesTerminalUi = true;
     await androidBuilder.buildAab(
       project: FlutterProject.current(),
       target: targetFile,

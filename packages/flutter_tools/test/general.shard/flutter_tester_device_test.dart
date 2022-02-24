@@ -7,18 +7,18 @@
 import 'dart:async';
 
 import 'package:dds/dds.dart';
-import 'package:flutter_tools/src/base/io.dart';
-import 'package:flutter_tools/src/base/logger.dart';
-import 'package:flutter_tools/src/build_info.dart';
-import 'package:flutter_tools/src/device.dart';
-import 'package:flutter_tools/src/test/font_config_manager.dart';
-import 'package:flutter_tools/src/test/flutter_tester_device.dart';
-import 'package:meta/meta.dart';
-import 'package:mockito/mockito.dart';
-import 'package:stream_channel/stream_channel.dart';
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
+import 'package:flutter_tools/src/base/io.dart';
+import 'package:flutter_tools/src/base/logger.dart';
 import 'package:flutter_tools/src/base/platform.dart';
+import 'package:flutter_tools/src/build_info.dart';
+import 'package:flutter_tools/src/device.dart';
+import 'package:flutter_tools/src/test/flutter_tester_device.dart';
+import 'package:flutter_tools/src/test/font_config_manager.dart';
+import 'package:meta/meta.dart';
+import 'package:stream_channel/stream_channel.dart';
+import 'package:test/fake.dart';
 
 import '../src/common.dart';
 import '../src/context.dart';
@@ -34,7 +34,6 @@ void main() {
     fileSystem = MemoryFileSystem.test();
     // Not Windows.
     platform = FakePlatform(
-      operatingSystem: 'linux',
       environment: <String, String>{},
     );
     processManager = FakeProcessManager.any();
@@ -52,9 +51,66 @@ void main() {
       dartEntrypointArgs: dartEntrypointArgs,
     );
 
+  testUsingContext('runs in Rosetta on arm64 Mac', () async {
+    final FakeProcessManager processManager = FakeProcessManager.empty();
+    final FlutterTesterTestDevice device = TestFlutterTesterDevice(
+      platform: FakePlatform(operatingSystem: 'macos'),
+      fileSystem: fileSystem,
+      processManager: processManager,
+      enableObservatory: false,
+      dartEntrypointArgs: const <String>[],
+    );
+    processManager.addCommands(<FakeCommand>[
+      const FakeCommand(
+        command: <String>[
+          'which',
+          'sysctl',
+        ],
+      ),
+      const FakeCommand(
+        command: <String>[
+          'sysctl',
+          'hw.optional.arm64',
+        ],
+        stdout: 'hw.optional.arm64: 1',
+      ),
+      FakeCommand(command: const <String>[
+        '/usr/bin/arch',
+        '-x86_64',
+        '/',
+        '--disable-observatory',
+        '--ipv6',
+        '--enable-checked-mode',
+        '--verify-entry-points',
+        '--enable-software-rendering',
+        '--skia-deterministic-rendering',
+        '--enable-dart-profiling',
+        '--non-interactive',
+        '--use-test-fonts',
+        '--packages=.dart_tool/package_config.json',
+        'example.dill',
+      ], environment: <String, String>{
+        'FLUTTER_TEST': 'true',
+        'FONTCONFIG_FILE': device.fontConfigManager.fontConfigFile.path,
+        'SERVER_PORT': '0',
+        'APP_NAME': '',
+      }),
+    ]);
+    await device.start('example.dill');
+    expect(processManager.hasRemainingExpectations, isFalse);
+  });
+
   group('The FLUTTER_TEST environment variable is passed to the test process', () {
     setUp(() {
-      processManager = FakeProcessManager.list(<FakeCommand>[]);
+      processManager = FakeProcessManager.list(<FakeCommand>[
+        const FakeCommand(
+          command: <String>[
+            'uname',
+            '-m',
+          ],
+          stdout: 'x86_64',
+        ),
+      ]);
       device = createDevice();
 
       fileSystem
@@ -80,7 +136,7 @@ void main() {
       ], environment: <String, String>{
         'FLUTTER_TEST': expectedFlutterTestValue,
         'FONTCONFIG_FILE': device.fontConfigManager.fontConfigFile.path,
-        'SERVER_PORT': 'null',
+        'SERVER_PORT': '0',
         'APP_NAME': '',
       });
     }
@@ -130,6 +186,13 @@ void main() {
       processManager = FakeProcessManager.list(<FakeCommand>[
         const FakeCommand(
           command: <String>[
+            'uname',
+            '-m',
+          ],
+          stdout: 'x86_64',
+        ),
+        const FakeCommand(
+          command: <String>[
             '/',
             '--disable-observatory',
             '--ipv6',
@@ -147,7 +210,6 @@ void main() {
           ],
           stdout: 'success',
           stderr: 'failure',
-          exitCode: 0,
         )
       ]);
       device = createDevice(dartEntrypointArgs: <String>['--foo', '--bar']);
@@ -165,6 +227,13 @@ void main() {
       processManager = FakeProcessManager.list(<FakeCommand>[
         const FakeCommand(
           command: <String>[
+            'uname',
+            '-m',
+          ],
+          stdout: 'x86_64',
+        ),
+        const FakeCommand(
+          command: <String>[
             '/',
             '--observatory-port=0',
             '--ipv6',
@@ -180,13 +249,12 @@ void main() {
           ],
           stdout: 'Observatory listening on http://localhost:1234',
           stderr: 'failure',
-          exitCode: 0,
         )
       ]);
       device = createDevice(enableObservatory: true);
     });
 
-    testUsingContext('skips setting observatory port and uses the input port for for DDS instead', () async {
+    testUsingContext('skips setting observatory port and uses the input port for DDS instead', () async {
       await device.start('example.dill');
       await device.observatoryUri;
 
@@ -220,11 +288,7 @@ class TestFlutterTesterDevice extends FlutterTesterTestDevice {
         treeShakeIcons: false,
         packagesPath: '.dart_tool/package_config.json',
       ),
-      startPaused: false,
-      disableDds: false,
-      disableServiceAuthCodes: false,
       hostVmServicePort: 1234,
-      nullAssertions: false,
       dartEntrypointArgs: dartEntrypointArgs,
     ),
     enableObservatory: enableObservatory,
@@ -244,17 +308,28 @@ class TestFlutterTesterDevice extends FlutterTesterTestDevice {
   @override
   Future<DartDevelopmentService> startDds(Uri uri) async {
     _ddsServiceUriCompleter.complete(uri);
-    final MockDartDevelopmentService mock = MockDartDevelopmentService();
-    when(mock.uri).thenReturn(Uri.parse('http://localhost:${debuggingOptions.hostVmServicePort}'));
-    return mock;
+    return FakeDartDevelopmentService(Uri.parse('http://localhost:${debuggingOptions.hostVmServicePort}'), Uri.parse('http://localhost:8080'));
   }
 
   @override
-  Future<HttpServer> bind(InternetAddress host, int port) async => MockHttpServer();
+  Future<HttpServer> bind(InternetAddress host, int port) async => FakeHttpServer();
 
   @override
   Future<StreamChannel<String>> get remoteChannel async => StreamChannelController<String>().foreign;
 }
 
-class MockDartDevelopmentService extends Mock implements DartDevelopmentService {}
-class MockHttpServer extends Mock implements HttpServer {}
+class FakeDartDevelopmentService extends Fake implements DartDevelopmentService {
+  FakeDartDevelopmentService(this.uri, this.original);
+
+  final Uri original;
+
+  @override
+  final Uri uri;
+
+  @override
+  Uri get remoteVmServiceUri => original;
+}
+class FakeHttpServer extends Fake implements HttpServer {
+  @override
+  int get port => 0;
+}

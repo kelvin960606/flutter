@@ -7,10 +7,14 @@
 // initialize a binding, which rendering_tester will attempt to re-initialize
 // (or vice versa).
 
-import 'package:flutter_test/flutter_test.dart';
+@Tags(<String>['reduced-test-set'])
+
+import 'dart:ui' as ui;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 class _TestSliverPersistentHeaderDelegate extends SliverPersistentHeaderDelegate {
   _TestSliverPersistentHeaderDelegate({
@@ -45,6 +49,50 @@ class _TestSliverPersistentHeaderDelegate extends SliverPersistentHeaderDelegate
 }
 
 void main() {
+  testWidgets('Scrollable widget scrollDirection update test', (WidgetTester tester) async {
+    final ScrollController controller = ScrollController();
+    Widget buildFrame(Axis axis) {
+      return Directionality(
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: SizedBox(
+            height: 100.0,
+            width: 100.0,
+            child: SingleChildScrollView(
+              controller: controller,
+              scrollDirection: axis,
+              child: const SizedBox(
+                width: 200,
+                height: 200,
+                child: SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(buildFrame(Axis.vertical));
+    expect(controller.position.pixels, 0.0);
+
+    // Change the SingleChildScrollView.scrollDirection to horizontal.
+    await tester.pumpWidget(buildFrame(Axis.horizontal));
+    expect(controller.position.pixels, 0.0);
+
+    final TestGesture gesture = await tester.startGesture(const Offset(400.0, 300.0));
+    // Drag in the vertical direction should not cause scrolling.
+    await gesture.moveBy(const Offset(0.0, 10.0));
+    expect(controller.position.pixels, 0.0);
+    await gesture.moveBy(const Offset(0.0, -10.0));
+    expect(controller.position.pixels, 0.0);
+
+    // Drag in the horizontal direction should cause scrolling.
+    await gesture.moveBy(const Offset(-10.0, 0.0));
+    expect(controller.position.pixels, 10.0);
+    await gesture.moveBy(const Offset(10.0, 0.0));
+    expect(controller.position.pixels, 0.0);
+  });
+
   testWidgets('Viewport getOffsetToReveal - down', (WidgetTester tester) async {
     List<Widget> children;
     await tester.pumpWidget(
@@ -534,7 +582,7 @@ void main() {
 
   testWidgets('Nested Viewports showOnScreen', (WidgetTester tester) async {
     final List<ScrollController> controllersX = List<ScrollController>.generate(10, (int i) => ScrollController(initialScrollOffset: 400.0));
-    final ScrollController controllerY  = ScrollController(initialScrollOffset: 400.0);
+    final ScrollController controllerY = ScrollController(initialScrollOffset: 400.0);
     final List<List<Widget>> children = List<List<Widget>>.generate(10, (int y) {
       return List<Widget>.generate(10, (int x) {
         return SizedBox(
@@ -735,6 +783,12 @@ void main() {
     }
 
     testWidgets('Reverse List showOnScreen', (WidgetTester tester) async {
+      final ui.Size originalScreenSize = tester.binding.window.physicalSize;
+      final double originalDevicePixelRatio = tester.binding.window.devicePixelRatio;
+      addTearDown(() {
+        tester.binding.window.devicePixelRatioTestValue = originalDevicePixelRatio;
+        tester.binding.window.physicalSizeTestValue = originalScreenSize;
+      });
       const double screenHeight = 400.0;
       const double screenWidth = 400.0;
       const double itemHeight = screenHeight / 10.0;
@@ -889,8 +943,8 @@ void main() {
     // Regression test for https://github.com/flutter/flutter/issues/20893.
 
     List<Widget> slivers;
-    final ScrollController controllerX =  ScrollController(initialScrollOffset: 0.0);
-    final ScrollController controllerY  = ScrollController(initialScrollOffset: 0.0);
+    final ScrollController controllerX = ScrollController();
+    final ScrollController controllerY = ScrollController();
 
     await tester.pumpWidget(
       Directionality(
@@ -939,8 +993,8 @@ void main() {
 
   testWidgets('Nested Viewports showOnScreen on Sliver with allowImplicitScrolling=false for inner viewport', (WidgetTester tester) async {
     Widget sliver;
-    final ScrollController controllerX =  ScrollController(initialScrollOffset: 0.0);
-    final ScrollController controllerY  = ScrollController(initialScrollOffset: 0.0);
+    final ScrollController controllerX = ScrollController();
+    final ScrollController controllerY = ScrollController();
 
     await tester.pumpWidget(
       Directionality(
@@ -1076,7 +1130,6 @@ void main() {
                   return i == 10
                   ? SliverPersistentHeader(
                     pinned: true,
-                    floating: false,
                     delegate: _TestSliverPersistentHeaderDelegate(
                       minExtent: 100,
                       maxExtent: 300,
@@ -1115,14 +1168,15 @@ void main() {
       controller.jumpTo(
         11 * 300.0  // Preceding headers
         + 200.0     // Shrinks the pinned header to minExtent
-        + 100.0     // Obstructs the leading 100 pixels of the 11th header
+        + 100.0,     // Obstructs the leading 100 pixels of the 11th header
       );
       await tester.pumpAndSettle();
 
       tester.renderObject(find.byWidget(children[11], skipOffstage: false)).showOnScreen();
       await tester.pumpAndSettle();
       expect(controller.offset, lessThan(11 * 300.0 + 200.0 + 100.0));
-  });
+    },
+  );
 
   void testFloatingHeaderShowOnScreen({ bool animated = true, Axis axis = Axis.vertical }) {
     final TickerProvider? vsync = animated ? const TestVSync() : null;
@@ -1185,7 +1239,7 @@ void main() {
                 floating: true,
                 delegate: _TestSliverPersistentHeaderDelegate(minExtent: 100, maxExtent: 300, key: headerKey, vsync: vsync),
               ),
-            )
+            ),
           );
 
           final Finder pinnedHeaderContent = find.byKey(headerKey, skipOffstage: false);
@@ -1217,7 +1271,8 @@ void main() {
           await tester.pumpAndSettle();
           expect(controller.offset, 300.0 * 15);
           expect(mainAxisExtent(tester, pinnedHeaderContent), 300);
-      });
+        },
+      );
 
       testWidgets(
         'RenderViewportBase.showOnScreen but no child',
@@ -1228,9 +1283,9 @@ void main() {
                 key: headerKey,
                 pinned: true,
                 floating: true,
-                delegate: _TestSliverPersistentHeaderDelegate(minExtent: 100, maxExtent: 300, child: null, vsync: vsync),
+                delegate: _TestSliverPersistentHeaderDelegate(minExtent: 100, maxExtent: 300, vsync: vsync),
               ),
-            )
+            ),
           );
 
           final Finder pinnedHeaderContent = find.byKey(headerKey, skipOffstage: false);
@@ -1260,7 +1315,8 @@ void main() {
           await tester.pumpAndSettle();
           expect(controller.offset, 300.0 * 15);
           expect(mainAxisExtent(tester, pinnedHeaderContent), 300);
-      });
+        },
+      );
 
       testWidgets(
         'RenderViewportBase.showOnScreen with maxShowOnScreenExtent ',
@@ -1278,7 +1334,7 @@ void main() {
                   showOnScreenConfiguration: const PersistentHeaderShowOnScreenConfiguration(maxShowOnScreenExtent: 200),
                 ),
               ),
-            )
+            ),
           );
 
           final Finder pinnedHeaderContent = find.byKey(headerKey, skipOffstage: false);
@@ -1320,7 +1376,8 @@ void main() {
           await tester.pumpAndSettle();
           expect(controller.offset, 300.0 * 10 + 50.0);
           expect(mainAxisExtent(tester, pinnedHeaderContent), 250);
-      });
+        },
+      );
 
       testWidgets(
         'RenderViewportBase.showOnScreen with minShowOnScreenExtent ',
@@ -1338,7 +1395,7 @@ void main() {
                   showOnScreenConfiguration: const PersistentHeaderShowOnScreenConfiguration(minShowOnScreenExtent: 200),
                 ),
               ),
-            )
+            ),
           );
 
           final Finder pinnedHeaderContent = find.byKey(headerKey, skipOffstage: false);
@@ -1380,7 +1437,8 @@ void main() {
           await tester.pumpAndSettle();
           expect(controller.offset, 300.0 * 10 + 50.0);
           expect(mainAxisExtent(tester, pinnedHeaderContent), 250);
-      });
+        },
+      );
 
       testWidgets(
         'RenderViewportBase.showOnScreen should not scroll if the rect is already visible, '
@@ -1394,7 +1452,7 @@ void main() {
                 delegate: _TestSliverPersistentHeaderDelegate(minExtent: 100, maxExtent: 300, key: headerKey, vsync: vsync),
               ),
               reversed: true,
-            )
+            ),
           );
 
           controller.jumpTo(-300.0 * 15);
@@ -1414,20 +1472,21 @@ void main() {
             - 8 * 300.0 // Preceding headers 11 - 18, children[11]'s top edge is aligned to the leading edge.
             - 400.0     // Viewport height. children[10] (the pinned header) becomes pinned at the bottom of the screen.
             - 200.0     // Shrinks the pinned header to minExtent (100).
-            - 100.0     // Obstructs the leading 100 pixels of the 11th header
+            - 100.0,     // Obstructs the leading 100 pixels of the 11th header
           );
           await tester.pumpAndSettle();
 
           tester.renderObject(find.byWidget(children[9], skipOffstage: false)).showOnScreen();
           await tester.pumpAndSettle();
           expect(controller.offset, -8 * 300.0 - 400.0 - 200.0);
-      });
+        },
+      );
     });
   }
 
   group('Floating header showOnScreen', () {
-    testFloatingHeaderShowOnScreen(animated: true, axis: Axis.vertical);
-    testFloatingHeaderShowOnScreen(animated: true, axis: Axis.horizontal);
+    testFloatingHeaderShowOnScreen();
+    testFloatingHeaderShowOnScreen(axis: Axis.horizontal);
   });
 
   group('RenderViewport getOffsetToReveal renderBox to sliver coordinates conversion', () {
@@ -1465,7 +1524,7 @@ void main() {
     }
 
     testWidgets('up, forward growth', (WidgetTester tester) async {
-      await tester.pumpWidget(buildList(axis: Axis.vertical, reverse: true, reverseGrowth: false));
+      await tester.pumpWidget(buildList(axis: Axis.vertical, reverse: true));
       final RenderAbstractViewport viewport = tester.allRenderObjects.whereType<RenderAbstractViewport>().first;
 
       final RenderObject target = tester.renderObject(find.text('Tile 5', skipOffstage: false));
@@ -1483,7 +1542,7 @@ void main() {
     });
 
     testWidgets('right, forward growth', (WidgetTester tester) async {
-      await tester.pumpWidget(buildList(axis: Axis.horizontal, reverse: false, reverseGrowth: false));
+      await tester.pumpWidget(buildList(axis: Axis.horizontal));
       final RenderAbstractViewport viewport = tester.allRenderObjects.whereType<RenderAbstractViewport>().first;
 
       final RenderObject target = tester.renderObject(find.text('Tile 5', skipOffstage: false));
@@ -1492,7 +1551,7 @@ void main() {
     });
 
     testWidgets('right, reverse growth', (WidgetTester tester) async {
-      await tester.pumpWidget(buildList(axis: Axis.horizontal, reverse: false, reverseGrowth: true));
+      await tester.pumpWidget(buildList(axis: Axis.horizontal, reverseGrowth: true));
       final RenderAbstractViewport viewport = tester.allRenderObjects.whereType<RenderAbstractViewport>().first;
 
       final RenderObject target = tester.renderObject(find.text('Tile 0', skipOffstage: false));
@@ -1501,7 +1560,7 @@ void main() {
     });
 
     testWidgets('down, forward growth', (WidgetTester tester) async {
-      await tester.pumpWidget(buildList(axis: Axis.vertical, reverse: false, reverseGrowth: false));
+      await tester.pumpWidget(buildList(axis: Axis.vertical));
       final RenderAbstractViewport viewport = tester.allRenderObjects.whereType<RenderAbstractViewport>().first;
 
       final RenderObject target = tester.renderObject(find.text('Tile 5', skipOffstage: false));
@@ -1510,7 +1569,7 @@ void main() {
     });
 
     testWidgets('down, reverse growth', (WidgetTester tester) async {
-      await tester.pumpWidget(buildList(axis: Axis.vertical, reverse: false, reverseGrowth: true));
+      await tester.pumpWidget(buildList(axis: Axis.vertical, reverseGrowth: true));
       final RenderAbstractViewport viewport = tester.allRenderObjects.whereType<RenderAbstractViewport>().first;
 
       final RenderObject target = tester.renderObject(find.text('Tile 0', skipOffstage: false));
@@ -1519,7 +1578,7 @@ void main() {
     });
 
     testWidgets('left, forward growth', (WidgetTester tester) async {
-      await tester.pumpWidget(buildList(axis: Axis.horizontal, reverse: true, reverseGrowth: false));
+      await tester.pumpWidget(buildList(axis: Axis.horizontal, reverse: true));
       final RenderAbstractViewport viewport = tester.allRenderObjects.whereType<RenderAbstractViewport>().first;
 
       final RenderObject target = tester.renderObject(find.text('Tile 5', skipOffstage: false));
@@ -1638,7 +1697,7 @@ void main() {
 
     testWidgets('Horizontal viewport was given unbounded width', (WidgetTester tester) async {
       await expectFlutterError(
-        widget: buildNestedWidget(Axis.horizontal, Axis.horizontal),
+        widget: buildNestedWidget(Axis.horizontal),
         tester: tester,
         message:
           'FlutterError\n'
@@ -1653,7 +1712,7 @@ void main() {
           '   horizontal space for the children. In this case, consider using a\n'
           '   Row instead. Otherwise, consider using the "shrinkWrap" property\n'
           '   (or a ShrinkWrappingViewport) to size the width of the viewport\n'
-          '   to the sum of the widths of its children.\n'
+          '   to the sum of the widths of its children.\n',
       );
     });
 
@@ -1667,7 +1726,7 @@ void main() {
           '   Viewports expand in the cross axis to fill their container and\n'
           '   constrain their children to match their extent in the cross axis.\n'
           '   In this case, a vertical viewport was given an unlimited amount\n'
-          '   of horizontal space in which to expand.\n'
+          '   of horizontal space in which to expand.\n',
       );
     });
 
@@ -1688,14 +1747,14 @@ void main() {
           '   vertical space for the children. In this case, consider using a\n'
           '   Column instead. Otherwise, consider using the "shrinkWrap"\n'
           '   property (or a ShrinkWrappingViewport) to size the height of the\n'
-          '   viewport to the sum of the heights of its children.\n'
+          '   viewport to the sum of the heights of its children.\n',
       );
     });
   });
 
   test('Viewport debugThrowIfNotCheckingIntrinsics() control test', () {
     final RenderViewport renderViewport = RenderViewport(
-      crossAxisDirection: AxisDirection.right, offset: ViewportOffset.zero()
+      crossAxisDirection: AxisDirection.right, offset: ViewportOffset.zero(),
     );
     late FlutterError error;
     try {
@@ -1717,7 +1776,7 @@ void main() {
     );
 
     final RenderShrinkWrappingViewport renderShrinkWrappingViewport = RenderShrinkWrappingViewport(
-      crossAxisDirection: AxisDirection.right, offset: ViewportOffset.zero()
+      crossAxisDirection: AxisDirection.right, offset: ViewportOffset.zero(),
     );
     try {
       renderShrinkWrappingViewport.computeMinIntrinsicHeight(0);
@@ -1757,8 +1816,10 @@ void main() {
       // Children should be painted in reverse order to the list given
       expect(renderViewport.childrenInPaintOrder, equals(children.reversed));
       // childrenInPaintOrder should be reverse of childrenInHitTestOrder
-      expect(renderViewport.childrenInPaintOrder,
-          equals(renderViewport.childrenInHitTestOrder.toList().reversed));
+      expect(
+        renderViewport.childrenInPaintOrder,
+        equals(renderViewport.childrenInHitTestOrder.toList().reversed),
+      );
     });
 
     test('RenderShrinkWrappingViewport', () async {
@@ -1778,8 +1839,289 @@ void main() {
       // Children should be painted in reverse order to the list given
       expect(renderViewport.childrenInPaintOrder, equals(children.reversed));
       // childrenInPaintOrder should be reverse of childrenInHitTestOrder
-      expect(renderViewport.childrenInPaintOrder,
-          equals(renderViewport.childrenInHitTestOrder.toList().reversed));
+      expect(
+        renderViewport.childrenInPaintOrder,
+        equals(renderViewport.childrenInHitTestOrder.toList().reversed),
+      );
+    });
+  });
+
+  group('Overscrolling RenderShrinkWrappingViewport', () {
+    Widget _buildSimpleShrinkWrap({
+      ScrollController? controller,
+      Axis scrollDirection = Axis.vertical,
+      ScrollPhysics? physics,
+    }) {
+      return Directionality(
+        textDirection: TextDirection.ltr,
+        child: MediaQuery(
+          data: const MediaQueryData(),
+          child: ListView.builder(
+            controller: controller,
+            physics: physics,
+            scrollDirection: scrollDirection,
+            shrinkWrap: true,
+            itemBuilder: (BuildContext context, int index) => SizedBox(height: 50, width: 50, child: Text('Item $index')),
+            itemCount: 20,
+            itemExtent: 50,
+          ),
+        ),
+      );
+    }
+
+    Widget _buildClippingShrinkWrap(
+      ScrollController controller, {
+      bool constrain = false,
+    }) {
+      return Directionality(
+        textDirection: TextDirection.ltr,
+        child: MediaQuery(
+          data: const MediaQueryData(),
+          child: Container(
+            color: const Color(0xFF000000),
+            child: Column(
+              children: <Widget>[
+                // Translucent boxes above and below the shrinkwrapped viewport
+                // make it easily discernible if the viewport is not being
+                // clipped properly.
+                Opacity(
+                  opacity: 0.5,
+                  child: Container(height: 100, color: const Color(0xFF00B0FF)),
+                ),
+                Container(
+                  height: constrain ? 150 : null,
+                  color: const Color(0xFFF44336),
+                  child: ListView.builder(
+                    controller: controller,
+                    shrinkWrap: true,
+                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                    itemBuilder: (BuildContext context, int index) => Text('Item $index'),
+                    itemCount: 10,
+                  ),
+                ),
+                Opacity(
+                  opacity: 0.5,
+                  child: Container(height: 100, color: const Color(0xFF00B0FF)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('constrained viewport correctly clips overflow', (WidgetTester tester) async {
+      // Regression test for https://github.com/flutter/flutter/issues/89717
+      final  ScrollController controller = ScrollController();
+      await tester.pumpWidget(
+        _buildClippingShrinkWrap(controller, constrain: true)
+      );
+      expect(controller.offset, 0.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dy, 100.0);
+      expect(tester.getTopLeft(find.text('Item 9')).dy, 226.0);
+
+      // Overscroll
+      final TestGesture overscrollGesture = await tester.startGesture(tester.getCenter(find.text('Item 0')));
+      await overscrollGesture.moveBy(const Offset(0, 100));
+      await tester.pump();
+      expect(controller.offset, -100.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dy, 200.0);
+      await expectLater(
+        find.byType(Directionality),
+        matchesGoldenFile('shrinkwrap_clipped_constrained_overscroll.png'),
+      );
+      await overscrollGesture.up();
+      await tester.pumpAndSettle();
+      expect(controller.offset, 0.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dy, 100.0);
+      expect(tester.getTopLeft(find.text('Item 9')).dy, 226.0);
+    });
+
+    testWidgets('correctly clips overflow without constraints', (WidgetTester tester) async {
+      // Regression test for https://github.com/flutter/flutter/issues/89717
+      final  ScrollController controller = ScrollController();
+      await tester.pumpWidget(
+        _buildClippingShrinkWrap(controller)
+      );
+      expect(controller.offset, 0.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dy, 100.0);
+      expect(tester.getTopLeft(find.text('Item 9')).dy, 226.0);
+
+      // Overscroll
+      final TestGesture overscrollGesture = await tester.startGesture(tester.getCenter(find.text('Item 0')));
+      await overscrollGesture.moveBy(const Offset(0, 100));
+      await tester.pump();
+      expect(controller.offset, -100.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dy, 200.0);
+      await expectLater(
+        find.byType(Directionality),
+        matchesGoldenFile('shrinkwrap_clipped_overscroll.png'),
+      );
+      await overscrollGesture.up();
+      await tester.pumpAndSettle();
+      expect(controller.offset, 0.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dy, 100.0);
+      expect(tester.getTopLeft(find.text('Item 9')).dy, 226.0);
+    });
+
+    testWidgets('allows overscrolling on default platforms - vertical', (WidgetTester tester) async {
+      // Regression test for https://github.com/flutter/flutter/issues/10949
+      // Scrollables should overscroll by default on iOS and macOS
+      final  ScrollController controller = ScrollController();
+      await tester.pumpWidget(
+        _buildSimpleShrinkWrap(controller: controller),
+      );
+      expect(controller.offset, 0.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dy, 0.0);
+      // Check overscroll at both ends
+      // Start
+      TestGesture overscrollGesture = await tester.startGesture(tester.getCenter(find.byType(ListView)));
+      await overscrollGesture.moveBy(const Offset(0, 25));
+      await tester.pump();
+      expect(controller.offset, -25.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dy, 25.0);
+      await overscrollGesture.up();
+      await tester.pumpAndSettle();
+      expect(controller.offset, 0.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dy, 0.0);
+
+      // End
+      final double maxExtent = controller.position.maxScrollExtent;
+      controller.jumpTo(controller.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(controller.offset, maxExtent);
+      expect(tester.getBottomLeft(find.text('Item 19')).dy, 600.0);
+
+      overscrollGesture = await tester.startGesture(tester.getCenter(find.byType(ListView)));
+      await overscrollGesture.moveBy(const Offset(0, -25));
+      await tester.pump();
+      expect(controller.offset, greaterThan(maxExtent));
+      expect(tester.getBottomLeft(find.text('Item 19')).dy, 575.0);
+      await overscrollGesture.up();
+      await tester.pumpAndSettle();
+      expect(controller.offset, maxExtent);
+      expect(tester.getBottomLeft(find.text('Item 19')).dy, 600.0);
+    }, variant: const TargetPlatformVariant(<TargetPlatform>{ TargetPlatform.iOS, TargetPlatform.macOS }));
+
+    testWidgets('allows overscrolling on default platforms - horizontal', (WidgetTester tester) async {
+      // Regression test for https://github.com/flutter/flutter/issues/10949
+      // Scrollables should overscroll by default on iOS and macOS
+      final  ScrollController controller = ScrollController();
+      await tester.pumpWidget(
+        _buildSimpleShrinkWrap(controller: controller, scrollDirection: Axis.horizontal),
+      );
+      expect(controller.offset, 0.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dx, 0.0);
+      // Check overscroll at both ends
+      // Start
+      TestGesture overscrollGesture = await tester.startGesture(tester.getCenter(find.byType(ListView)));
+      await overscrollGesture.moveBy(const Offset(25, 0));
+      await tester.pump();
+      expect(controller.offset, -25.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dx, 25.0);
+      await overscrollGesture.up();
+      await tester.pumpAndSettle();
+      expect(controller.offset, 0.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dx, 0.0);
+
+      // End
+      final double maxExtent = controller.position.maxScrollExtent;
+      controller.jumpTo(controller.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(controller.offset, maxExtent);
+      expect(tester.getTopRight(find.text('Item 19')).dx, 800.0);
+
+      overscrollGesture = await tester.startGesture(tester.getCenter(find.byType(ListView)));
+      await overscrollGesture.moveBy(const Offset(-25, 0));
+      await tester.pump();
+      expect(controller.offset, greaterThan(maxExtent));
+      expect(tester.getTopRight(find.text('Item 19')).dx, 775.0);
+      await overscrollGesture.up();
+      await tester.pumpAndSettle();
+      expect(controller.offset, maxExtent);
+      expect(tester.getTopRight(find.text('Item 19')).dx, 800.0);
+    }, variant: const TargetPlatformVariant(<TargetPlatform>{ TargetPlatform.iOS, TargetPlatform.macOS }));
+
+    testWidgets('allows overscrolling per physics - vertical', (WidgetTester tester) async {
+      // Regression test for https://github.com/flutter/flutter/issues/10949
+      // Scrollables should overscroll when the scroll physics allow
+      final  ScrollController controller = ScrollController();
+      await tester.pumpWidget(
+        _buildSimpleShrinkWrap(controller: controller, physics: const BouncingScrollPhysics()),
+      );
+      expect(controller.offset, 0.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dy, 0.0);
+      // Check overscroll at both ends
+      // Start
+      TestGesture overscrollGesture = await tester.startGesture(tester.getCenter(find.byType(ListView)));
+      await overscrollGesture.moveBy(const Offset(0, 25));
+      await tester.pump();
+      expect(controller.offset, -25.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dy, 25.0);
+      await overscrollGesture.up();
+      await tester.pumpAndSettle();
+      expect(controller.offset, 0.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dy, 0.0);
+
+      // End
+      final double maxExtent = controller.position.maxScrollExtent;
+      controller.jumpTo(controller.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(controller.offset, maxExtent);
+      expect(tester.getBottomLeft(find.text('Item 19')).dy, 600.0);
+
+      overscrollGesture = await tester.startGesture(tester.getCenter(find.byType(ListView)));
+      await overscrollGesture.moveBy(const Offset(0, -25));
+      await tester.pump();
+      expect(controller.offset, greaterThan(maxExtent));
+      expect(tester.getBottomLeft(find.text('Item 19')).dy, 575.0);
+      await overscrollGesture.up();
+      await tester.pumpAndSettle();
+      expect(controller.offset, maxExtent);
+      expect(tester.getBottomLeft(find.text('Item 19')).dy, 600.0);
+    });
+
+    testWidgets('allows overscrolling per physics - horizontal', (WidgetTester tester) async {
+      // Regression test for https://github.com/flutter/flutter/issues/10949
+      // Scrollables should overscroll when the scroll physics allow
+      final  ScrollController controller = ScrollController();
+      await tester.pumpWidget(
+        _buildSimpleShrinkWrap(
+          controller: controller,
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+        ),
+      );
+      expect(controller.offset, 0.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dx, 0.0);
+      // Check overscroll at both ends
+      // Start
+      TestGesture overscrollGesture = await tester.startGesture(tester.getCenter(find.byType(ListView)));
+      await overscrollGesture.moveBy(const Offset(25, 0));
+      await tester.pump();
+      expect(controller.offset, -25.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dx, 25.0);
+      await overscrollGesture.up();
+      await tester.pumpAndSettle();
+      expect(controller.offset, 0.0);
+      expect(tester.getTopLeft(find.text('Item 0')).dx, 0.0);
+
+      // End
+      final double maxExtent = controller.position.maxScrollExtent;
+      controller.jumpTo(controller.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(controller.offset, maxExtent);
+      expect(tester.getTopRight(find.text('Item 19')).dx, 800.0);
+
+      overscrollGesture = await tester.startGesture(tester.getCenter(find.byType(ListView)));
+      await overscrollGesture.moveBy(const Offset(-25, 0));
+      await tester.pump();
+      expect(controller.offset, greaterThan(maxExtent));
+      expect(tester.getTopRight(find.text('Item 19')).dx, 775.0);
+      await overscrollGesture.up();
+      await tester.pumpAndSettle();
+      expect(controller.offset, maxExtent);
+      expect(tester.getTopRight(find.text('Item 19')).dx, 800.0);
     });
   });
 
@@ -1797,10 +2139,11 @@ void main() {
               GridView(
                 shrinkWrap: true,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    childAspectRatio: 3,
-                    mainAxisSpacing: 3,
-                    crossAxisSpacing: 3),
+                  crossAxisCount: 3,
+                  childAspectRatio: 3,
+                  mainAxisSpacing: 3,
+                  crossAxisSpacing: 3,
+                ),
                 children: const <Widget>[
                   Text('a'),
                   Text('b'),

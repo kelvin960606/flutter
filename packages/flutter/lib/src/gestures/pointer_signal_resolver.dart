@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
 import 'package:flutter/foundation.dart';
 
 import 'events.dart';
@@ -24,7 +23,7 @@ bool _isSameEvent(PointerSignalEvent event1, PointerSignalEvent event2) {
 /// these signal events were to handle them directly, it would cause issues
 /// such as multiple [Scrollable] widgets in the widget hierarchy responding
 /// to the same mouse wheel event. Using this class, these events will only
-/// be dispatched to the the first registered handler, which will in turn
+/// be dispatched to the first registered handler, which will in turn
 /// correspond to the widget that's deepest in the widget hierarchy.
 ///
 /// To use this class, objects should register their event handler like so:
@@ -37,7 +36,7 @@ bool _isSameEvent(PointerSignalEvent event1, PointerSignalEvent event2) {
 /// }
 /// ```
 ///
-/// {@tool dartpad --template=stateful_widget_material}
+/// {@tool dartpad}
 /// Here is an example that demonstrates the effect of not using the resolver
 /// versus using it.
 ///
@@ -51,118 +50,7 @@ bool _isSameEvent(PointerSignalEvent event1, PointerSignalEvent event2) {
 /// directly under the cursor will change color when the mouse wheel is
 /// triggered.
 ///
-/// ```dart imports
-/// import 'package:flutter/gestures.dart';
-/// ```
-///
-/// ```dart preamble
-/// class ColorChanger extends StatefulWidget {
-///   const ColorChanger({
-///     Key? key,
-///     required this.initialColor,
-///     required this.useResolver,
-///     this.child,
-///   }) : super(key: key);
-///
-///   final HSVColor initialColor;
-///   final bool useResolver;
-///   final Widget? child;
-///
-///   @override
-///   _ColorChangerState createState() => _ColorChangerState();
-/// }
-///
-/// class _ColorChangerState extends State<ColorChanger> {
-///   late HSVColor color;
-///
-///   void rotateColor() {
-///     setState(() {
-///       color = color.withHue((color.hue + 3) % 360.0);
-///     });
-///   }
-///
-///   @override
-///   void initState() {
-///     super.initState();
-///     color = widget.initialColor;
-///   }
-///
-///   @override
-///   Widget build(BuildContext context) {
-///     return DecoratedBox(
-///       decoration: BoxDecoration(
-///         border: const Border.fromBorderSide(BorderSide()),
-///         color: color.toColor(),
-///       ),
-///       child: Listener(
-///         onPointerSignal: (PointerSignalEvent event) {
-///           if (widget.useResolver) {
-///             GestureBinding.instance!.pointerSignalResolver.register(event, (PointerSignalEvent event) {
-///               rotateColor();
-///             });
-///           } else {
-///             rotateColor();
-///           }
-///         },
-///         child: Stack(
-///           fit: StackFit.expand,
-///           children: <Widget>[
-///             const AbsorbPointer(),
-///             if (widget.child != null) widget.child!,
-///           ],
-///         ),
-///       ),
-///     );
-///   }
-/// }
-/// ```
-///
-/// ```dart
-/// bool useResolver = false;
-///
-/// @override
-/// Widget build(BuildContext context) {
-///   return Material(
-///     child: Stack(
-///       fit: StackFit.expand,
-///       children: <Widget>[
-///         ColorChanger(
-///           initialColor: const HSVColor.fromAHSV(0.2, 120.0, 1, 1),
-///           useResolver: useResolver,
-///           child: FractionallySizedBox(
-///             widthFactor: 0.5,
-///             heightFactor: 0.5,
-///             child: ColorChanger(
-///               initialColor: const HSVColor.fromAHSV(1, 60.0, 1, 1),
-///               useResolver: useResolver,
-///             ),
-///           ),
-///         ),
-///         Align(
-///           alignment: Alignment.topLeft,
-///           child: Row(
-///             crossAxisAlignment: CrossAxisAlignment.center,
-///             children: <Widget>[
-///               Switch(
-///                 value: useResolver,
-///                 onChanged: (bool value) {
-///                   setState(() {
-///                     useResolver = value;
-///                   });
-///                 },
-///               ),
-///               const Text(
-///                 'Use the PointerSignalResolver?',
-///                 style: TextStyle(fontWeight: FontWeight.bold),
-///               ),
-///             ],
-///           ),
-///         ),
-///       ],
-///     ),
-///   );
-/// }
-/// ```
+/// ** See code in examples/api/lib/gestures/pointer_signal_resolver/pointer_signal_resolver.0.dart **
 /// {@end-tool}
 class PointerSignalResolver {
   PointerSignalResolvedCallback? _firstRegisteredCallback;
@@ -189,6 +77,7 @@ class PointerSignalResolver {
   ///
   /// This is called by the [GestureBinding] after the framework has finished
   /// dispatching the pointer signal event.
+  @pragma('vm:notify-debugger-on-exception')
   void resolve(PointerSignalEvent event) {
     if (_firstRegisteredCallback == null) {
       assert(_currentEvent == null);
@@ -200,9 +89,9 @@ class PointerSignalResolver {
     } catch (exception, stack) {
       InformationCollector? collector;
       assert(() {
-        collector = () sync* {
-          yield DiagnosticsProperty<PointerSignalEvent>('Event', event, style: DiagnosticsTreeStyle.errorProperty);
-        };
+        collector = () => <DiagnosticsNode>[
+          DiagnosticsProperty<PointerSignalEvent>('Event', event, style: DiagnosticsTreeStyle.errorProperty),
+        ];
         return true;
       }());
       FlutterError.reportError(FlutterErrorDetails(

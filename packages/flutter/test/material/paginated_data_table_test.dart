@@ -2,10 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// TODO(gspencergoog): Remove this tag once this test's state leaks/test
+// dependencies have been fixed.
+// https://github.com/flutter/flutter/issues/85160
+// Fails with "flutter test --test-randomize-ordering-seed=1000"
+@Tags(<String>['no-shuffle'])
+
+import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/gestures.dart' show DragStartBehavior;
 
 import 'data_table_test_utils.dart';
 
@@ -116,8 +122,10 @@ void main() {
     expect(find.text('Eclair (0)'), findsNothing);
     expect(find.text('Gingerbread (0)'), findsNothing);
 
-    final Finder lastPageButton = find.ancestor(of: find.byTooltip('Last page'),
-        matching: find.byWidgetPredicate((Widget widget) => widget is IconButton));
+    final Finder lastPageButton = find.ancestor(
+      of: find.byTooltip('Last page'),
+      matching: find.byWidgetPredicate((Widget widget) => widget is IconButton),
+    );
 
     expect(tester.widget<IconButton>(lastPageButton).onPressed, isNotNull);
 
@@ -134,8 +142,10 @@ void main() {
     expect(find.text('Donut (49)'), findsOneWidget);
     expect(find.text('KitKat (49)'), findsOneWidget);
 
-    final Finder firstPageButton = find.ancestor(of: find.byTooltip('First page'),
-        matching: find.byWidgetPredicate((Widget widget) => widget is IconButton));
+    final Finder firstPageButton = find.ancestor(
+      of: find.byTooltip('First page'),
+      matching: find.byWidgetPredicate((Widget widget) => widget is IconButton),
+    );
 
     expect(tester.widget<IconButton>(firstPageButton).onPressed, isNotNull);
 
@@ -215,7 +225,9 @@ void main() {
     // the column overflows because we're forcing it to 600 pixels high
     final dynamic exception = tester.takeException();
     expect(exception, isFlutterError);
+    // ignore: avoid_dynamic_calls
     expect(exception.diagnostics.first.level, DiagnosticLevel.summary);
+    // ignore: avoid_dynamic_calls
     expect(exception.diagnostics.first.toString(), startsWith('A RenderFlex overflowed by '));
 
     expect(find.text('Gingerbread (0)'), findsOneWidget);
@@ -290,7 +302,6 @@ void main() {
         header: header != null ? Text(header) : null,
         actions: actions,
         source: TestDataSource(allowSelection: true),
-        showCheckboxColumn: true,
         columns: const <DataColumn>[
           DataColumn(label: Text('Name')),
           DataColumn(label: Text('Calories'), numeric: true),
@@ -340,7 +351,9 @@ void main() {
     // the column overflows because we're forcing it to 600 pixels high
     final dynamic exception = tester.takeException();
     expect(exception, isFlutterError);
+    // ignore: avoid_dynamic_calls
     expect(exception.diagnostics.first.level, DiagnosticLevel.summary);
+    // ignore: avoid_dynamic_calls
     expect(exception.diagnostics.first.toString(), contains('A RenderFlex overflowed by'));
 
     expect(find.text('Rows per page:'), findsOneWidget);
@@ -431,10 +444,10 @@ void main() {
       ),
     ));
     expect(tester.renderObject<RenderBox>(
-      find.widgetWithText(Container, 'Name').first
+      find.widgetWithText(Container, 'Name').first,
     ).size.height, 56.0); // This is the header row height
     expect(tester.renderObject<RenderBox>(
-      find.widgetWithText(Container, 'Frozen yogurt (0)').first
+      find.widgetWithText(Container, 'Frozen yogurt (0)').first,
     ).size.height, 48.0); // This is the data row height
 
     // CUSTOM VALUES
@@ -442,28 +455,28 @@ void main() {
       home: Material(child: buildCustomHeightPaginatedTable(headingRowHeight: 48.0)),
     ));
     expect(tester.renderObject<RenderBox>(
-      find.widgetWithText(Container, 'Name').first
+      find.widgetWithText(Container, 'Name').first,
     ).size.height, 48.0);
 
     await tester.pumpWidget(MaterialApp(
       home: Material(child: buildCustomHeightPaginatedTable(headingRowHeight: 64.0)),
     ));
     expect(tester.renderObject<RenderBox>(
-      find.widgetWithText(Container, 'Name').first
+      find.widgetWithText(Container, 'Name').first,
     ).size.height, 64.0);
 
     await tester.pumpWidget(MaterialApp(
       home: Material(child: buildCustomHeightPaginatedTable(dataRowHeight: 30.0)),
     ));
     expect(tester.renderObject<RenderBox>(
-      find.widgetWithText(Container, 'Frozen yogurt (0)').first
+      find.widgetWithText(Container, 'Frozen yogurt (0)').first,
     ).size.height, 30.0);
 
     await tester.pumpWidget(MaterialApp(
       home: Material(child: buildCustomHeightPaginatedTable(dataRowHeight: 56.0)),
     ));
     expect(tester.renderObject<RenderBox>(
-      find.widgetWithText(Container, 'Frozen yogurt (0)').first
+      find.widgetWithText(Container, 'Frozen yogurt (0)').first,
     ).size.height, 56.0);
   });
 
@@ -757,12 +770,16 @@ void main() {
     final TestDataSource source = TestDataSource();
 
     // Note: 800 is wide enough to ensure that all of the columns fit in the
-    // Card. The DataTable can be larger than its containing Card, but this test
-    // is only concerned with ensuring the DataTable is at least as wide as the
-    // Card.
+    // Card. The test makes sure that the DataTable is exactly as wide
+    // as the Card, minus the Card's margin.
     const double _originalWidth = 800;
     const double _expandedWidth = 1600;
     const double _height = 400;
+
+    // By default, the margin of a Card is 4 in all directions, so
+    // the size of the DataTable (inside the Card) is horizontically
+    // reduced by 4 * 2; the left and right margins.
+    const double _cardMargin = 8;
 
     final Size originalSize = binding.renderView.size;
 
@@ -787,22 +804,23 @@ void main() {
     await binding.setSurfaceSize(const Size(_originalWidth, _height));
     await tester.pumpWidget(buildWidget());
 
+    double cardWidth = tester.renderObject<RenderBox>(find.byType(Card).first).size.width;
+
     // Widths should be equal before we resize...
     expect(
       tester.renderObject<RenderBox>(find.byType(DataTable).first).size.width,
-      moreOrLessEquals(
-        tester.renderObject<RenderBox>(find.byType(Card).first).size.width)
+      moreOrLessEquals(cardWidth - _cardMargin),
     );
 
     await binding.setSurfaceSize(const Size(_expandedWidth, _height));
     await tester.pumpWidget(buildWidget());
 
-    final double cardWidth = tester.renderObject<RenderBox>(find.byType(Card).first).size.width;
+    cardWidth = tester.renderObject<RenderBox>(find.byType(Card).first).size.width;
 
     // ... and should still be equal after the resize.
     expect(
       tester.renderObject<RenderBox>(find.byType(DataTable).first).size.width,
-      moreOrLessEquals(cardWidth)
+      moreOrLessEquals(cardWidth - _cardMargin),
     );
 
     // Double check to ensure we actually resized the surface properly.
@@ -849,7 +867,6 @@ void main() {
         home: PaginatedDataTable(
           header: const Text('Test table'),
           source: TestDataSource(allowSelection: true),
-          showCheckboxColumn: true,
           columns: const <DataColumn>[
             DataColumn(label: Text('Name')),
             DataColumn(label: Text('Calories'), numeric: true),
@@ -970,5 +987,61 @@ void main() {
     expect(selectedTextStyle.color, equals(selectedTextColor));
 
     await binding.setSurfaceSize(null);
+  });
+
+  testWidgets('PaginatedDataTable arrowHeadColor set properly', (WidgetTester tester) async {
+    await binding.setSurfaceSize(const Size(800, 800));
+    const Color arrowHeadColor = Color(0xFFE53935);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PaginatedDataTable(
+          arrowHeadColor: arrowHeadColor,
+          showFirstLastButtons: true,
+          header: const Text('Test table'),
+          source: TestDataSource(),
+          columns: const <DataColumn>[
+            DataColumn(label: Text('Name')),
+            DataColumn(label: Text('Calories'), numeric: true),
+            DataColumn(label: Text('Generation')),
+          ],
+        ),
+      )
+    );
+
+    final Iterable<Icon> icons = tester.widgetList(find.byType(Icon));
+
+    expect(icons.elementAt(0).color, arrowHeadColor);
+    expect(icons.elementAt(1).color, arrowHeadColor);
+    expect(icons.elementAt(2).color, arrowHeadColor);
+    expect(icons.elementAt(3).color, arrowHeadColor);
+  });
+
+  testWidgets('OverflowBar header left alignment', (WidgetTester tester) async {
+    // Test an old special case that tried to align the first child of a ButtonBar
+    // and the left edge of a Text header widget. Still possible with OverflowBar
+    // albeit without any special case in the implementation's build method.
+    Widget buildFrame(Widget header) {
+      return MaterialApp(
+        home: PaginatedDataTable(
+          header: header,
+          rowsPerPage: 2,
+          source: TestDataSource(),
+          columns: const <DataColumn>[
+            DataColumn(label: Text('Name')),
+            DataColumn(label: Text('Calories'), numeric: true),
+            DataColumn(label: Text('Generation')),
+          ],
+        ),
+      );
+    }
+
+    await tester.pumpWidget(buildFrame(const Text('HEADER')));
+    final double headerX = tester.getTopLeft(find.text('HEADER')).dx;
+    final Widget overflowBar = OverflowBar(
+      children: <Widget>[ElevatedButton(onPressed: () {}, child: const Text('BUTTON'))],
+    );
+    await tester.pumpWidget(buildFrame(overflowBar));
+    expect(headerX, tester.getTopLeft(find.byType(ElevatedButton)).dx);
   });
 }

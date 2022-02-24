@@ -275,7 +275,7 @@ void main() {
       } catch (error) {
         fail(
           'Test failed with i == $i, angle == ${angle / math.pi}π\n'
-          '$error'
+          '$error',
         );
       }
     }
@@ -336,7 +336,6 @@ class TraversalTester {
       ignoreTransform: true,
       ignoreRect: true,
       ignoreId: true,
-      childOrder: DebugSemanticsDumpOrder.traversalOrder,
     ));
   }
 

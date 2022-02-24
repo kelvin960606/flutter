@@ -6,7 +6,7 @@ import 'package:meta/meta.dart';
 
 import 'base/async_guard.dart';
 import 'base/terminal.dart';
-import 'globals_null_migrated.dart' as globals;
+import 'globals.dart' as globals;
 
 class ValidatorTask {
   ValidatorTask(this.validator, this.result);
@@ -126,8 +126,6 @@ class GroupedValidator extends DoctorValidator {
             mergedType = ValidationType.partial;
           }
           break;
-        default:
-          throw 'Unrecognized validation type: ' + result.type.toString();
       }
       mergedMessages.addAll(result.messages);
     }
@@ -278,7 +276,7 @@ class ValidationMessage {
   }
 
   @override
-  int get hashCode => type.hashCode ^ message.hashCode ^ contextUrl.hashCode;
+  int get hashCode => Object.hash(type, message, contextUrl);
 }
 
 class NoIdeValidator extends DoctorValidator {

@@ -188,7 +188,6 @@ void main() {
         textDirection: TextDirection.ltr,
         child: MediaQuery(
           data: MediaQueryData(
-            padding: EdgeInsets.zero,
             viewPadding: EdgeInsets.only(bottom: 20),
             viewInsets: EdgeInsets.only(bottom: 300),
           ),
@@ -420,8 +419,8 @@ void main() {
     await tester.pumpWidget(
       const CupertinoApp(
         home: CupertinoPageScaffold(
-          child: Center(),
           backgroundColor: Color(0xFF010203),
+          child: Center(),
         ),
       ),
     );
@@ -490,12 +489,10 @@ void main() {
       return CupertinoApp(
         home: MediaQuery(
           data: MediaQueryData(
-            padding: EdgeInsets.zero,
             viewPadding: const EdgeInsets.only(bottom: 20),
             viewInsets: EdgeInsets.only(bottom: showKeyboard ? 300 : 20),
           ),
           child: CupertinoPageScaffold(
-            resizeToAvoidBottomInset: true,
             navigationBar: showNavigationBar ? const CupertinoNavigationBar(
               middle: Text('Title'),
             ) : null,

@@ -146,7 +146,7 @@ class CalendarDatePicker extends StatefulWidget {
   final SelectableDayPredicate? selectableDayPredicate;
 
   @override
-  _CalendarDatePickerState createState() => _CalendarDatePickerState();
+  State<CalendarDatePicker> createState() => _CalendarDatePickerState();
 }
 
 class _CalendarDatePickerState extends State<CalendarDatePicker> {
@@ -495,7 +495,7 @@ class _MonthPickerState extends State<_MonthPicker> {
   late PageController _pageController;
   late MaterialLocalizations _localizations;
   late TextDirection _textDirection;
-  Map<LogicalKeySet, Intent>? _shortcutMap;
+  Map<ShortcutActivator, Intent>? _shortcutMap;
   Map<Type, Action<Intent>>? _actionMap;
   late FocusNode _dayGridFocus;
   DateTime? _focusedDay;
@@ -507,11 +507,11 @@ class _MonthPickerState extends State<_MonthPicker> {
     _previousMonthDate = DateUtils.addMonthsToMonthDate(_currentMonth, -1);
     _nextMonthDate = DateUtils.addMonthsToMonthDate(_currentMonth, 1);
     _pageController = PageController(initialPage: DateUtils.monthDelta(widget.firstDate, _currentMonth));
-    _shortcutMap = <LogicalKeySet, Intent>{
-      LogicalKeySet(LogicalKeyboardKey.arrowLeft): const DirectionalFocusIntent(TraversalDirection.left),
-      LogicalKeySet(LogicalKeyboardKey.arrowRight): const DirectionalFocusIntent(TraversalDirection.right),
-      LogicalKeySet(LogicalKeyboardKey.arrowDown): const DirectionalFocusIntent(TraversalDirection.down),
-      LogicalKeySet(LogicalKeyboardKey.arrowUp): const DirectionalFocusIntent(TraversalDirection.up),
+    _shortcutMap = const <ShortcutActivator, Intent>{
+      SingleActivator(LogicalKeyboardKey.arrowLeft): DirectionalFocusIntent(TraversalDirection.left),
+      SingleActivator(LogicalKeyboardKey.arrowRight): DirectionalFocusIntent(TraversalDirection.right),
+      SingleActivator(LogicalKeyboardKey.arrowDown): DirectionalFocusIntent(TraversalDirection.down),
+      SingleActivator(LogicalKeyboardKey.arrowUp): DirectionalFocusIntent(TraversalDirection.up),
     };
     _actionMap = <Type, Action<Intent>>{
       NextFocusIntent: CallbackAction<NextFocusIntent>(onInvoke: _handleGridNextFocus),
@@ -789,7 +789,6 @@ class _MonthPickerState extends State<_MonthPicker> {
                   controller: _pageController,
                   itemBuilder: _buildItems,
                   itemCount: DateUtils.monthDelta(widget.firstDate, widget.lastDate) + 1,
-                  scrollDirection: Axis.horizontal,
                   onPageChanged: _handleMonthPageChanged,
                 ),
               ),
@@ -1000,7 +999,7 @@ class _DayPickerState extends State<_DayPicker> {
           // border.
           dayColor = todayColor;
           decoration = BoxDecoration(
-            border: Border.all(color: todayColor, width: 1),
+            border: Border.all(color: todayColor),
             shape: BoxShape.circle,
           );
         }
@@ -1146,7 +1145,7 @@ class YearPicker extends StatefulWidget {
   final DragStartBehavior dragStartBehavior;
 
   @override
-  _YearPickerState createState() => _YearPickerState();
+  State<YearPicker> createState() => _YearPickerState();
 }
 
 class _YearPickerState extends State<YearPicker> {
@@ -1207,16 +1206,13 @@ class _YearPickerState extends State<YearPicker> {
       decoration = BoxDecoration(
         color: colorScheme.primary,
         borderRadius: BorderRadius.circular(decorationHeight / 2),
-        shape: BoxShape.rectangle,
       );
     } else if (isCurrentYear && !isDisabled) {
       decoration = BoxDecoration(
         border: Border.all(
           color: colorScheme.primary,
-          width: 1,
         ),
         borderRadius: BorderRadius.circular(decorationHeight / 2),
-        shape: BoxShape.rectangle,
       );
     }
 
@@ -1241,7 +1237,7 @@ class _YearPickerState extends State<YearPicker> {
     } else {
       yearItem = InkWell(
         key: ValueKey<int>(year),
-        onTap: () => widget.onChanged(DateTime(year, widget.initialDate.month, 1)),
+        onTap: () => widget.onChanged(DateTime(year, widget.initialDate.month)),
         child: yearItem,
       );
     }

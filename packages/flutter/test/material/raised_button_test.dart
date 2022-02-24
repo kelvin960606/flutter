@@ -4,8 +4,8 @@
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import '../rendering/mock_canvas.dart';
 import '../widgets/semantics_tester.dart';
@@ -35,7 +35,7 @@ void main() {
     expect(material.color, const Color(0xffe0e0e0));
     expect(material.elevation, 2.0);
     expect(material.shadowColor, null);
-    expect(material.shape, RoundedRectangleBorder(borderRadius: BorderRadius.circular(2.0)));
+    expect(material.shape, const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(2.0))));
     expect(material.textStyle!.color, const Color(0xdd000000));
     expect(material.textStyle!.fontFamily, 'Roboto');
     expect(material.textStyle!.fontSize, 14);
@@ -55,7 +55,7 @@ void main() {
     expect(material.color, const Color(0xffe0e0e0));
     expect(material.elevation, 8.0);
     expect(material.shadowColor, null);
-    expect(material.shape, RoundedRectangleBorder(borderRadius: BorderRadius.circular(2.0)));
+    expect(material.shape, const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(2.0))));
     expect(material.textStyle!.color, const Color(0xdd000000));
     expect(material.textStyle!.fontFamily, 'Roboto');
     expect(material.textStyle!.fontSize, 14);
@@ -80,7 +80,7 @@ void main() {
     expect(material.color, const Color(0x61000000));
     expect(material.elevation, 0.0);
     expect(material.shadowColor, null);
-    expect(material.shape, RoundedRectangleBorder(borderRadius: BorderRadius.circular(2.0)));
+    expect(material.shape, const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(2.0))));
     expect(material.textStyle!.color, const Color(0x61000000));
     expect(material.textStyle!.fontFamily, 'Roboto');
     expect(material.textStyle!.fontSize, 14);
@@ -121,9 +121,9 @@ void main() {
         home: Scaffold(
           body: Center(
             child: RaisedButton(
-              child: const Text('RaisedButton'),
               onPressed: () { },
               focusNode: focusNode,
+              child: const Text('RaisedButton'),
             ),
           ),
         ),
@@ -156,7 +156,6 @@ void main() {
     await expectLater(tester, meetsGuideline(textContrastGuideline));
   },
     skip: isBrowser, // https://github.com/flutter/flutter/issues/44115
-    semanticsEnabled: true,
   );
 
   testWidgets('RaisedButton uses stateful color for text color in different states', (WidgetTester tester) async {
@@ -185,10 +184,10 @@ void main() {
         home: Scaffold(
           body: Center(
             child: RaisedButton(
-              child: const Text('RaisedButton'),
               onPressed: () {},
               focusNode: focusNode,
               textColor: MaterialStateColor.resolveWith(getTextColor),
+              child: const Text('RaisedButton'),
             ),
           ),
         ),
@@ -312,10 +311,10 @@ void main() {
           body: Center(
             child: RaisedButton(
               onPressed: null,
-              child: const Text('RaisedButton'),
               focusNode: focusNode,
               textColor: MaterialStateColor.resolveWith(getTextColor),
               disabledTextColor: unusedDisabledTextColor,
+              child: const Text('RaisedButton'),
             ),
           ),
         ),
@@ -340,9 +339,9 @@ void main() {
       return Directionality(
         textDirection: TextDirection.ltr,
         child: RaisedButton(
-          child: const Text('button'),
           onPressed: onPressed,
           onLongPress: onLongPress,
+          child: const Text('button'),
         ),
       );
     }
@@ -350,7 +349,7 @@ void main() {
     // onPressed not null, onLongPress null.
     wasPressed = false;
     await tester.pumpWidget(
-      buildFrame(onPressed: () { wasPressed = true; }, onLongPress: null),
+      buildFrame(onPressed: () { wasPressed = true; }),
     );
     raisedButton = find.byType(RaisedButton);
     expect(tester.widget<RaisedButton>(raisedButton).enabled, true);
@@ -360,7 +359,7 @@ void main() {
     // onPressed null, onLongPress not null.
     wasPressed = false;
     await tester.pumpWidget(
-      buildFrame(onPressed: null, onLongPress: () { wasPressed = true; }),
+      buildFrame(onLongPress: () { wasPressed = true; }),
     );
     raisedButton = find.byType(RaisedButton);
     expect(tester.widget<RaisedButton>(raisedButton).enabled, true);
@@ -369,7 +368,7 @@ void main() {
 
     // onPressed null, onLongPress null.
     await tester.pumpWidget(
-      buildFrame(onPressed: null, onLongPress: null),
+      buildFrame(),
     );
     raisedButton = find.byType(RaisedButton);
     expect(tester.widget<RaisedButton>(raisedButton).enabled, false);

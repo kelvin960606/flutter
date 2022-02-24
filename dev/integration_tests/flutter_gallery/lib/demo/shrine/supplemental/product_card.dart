@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:scoped_model/scoped_model.dart';
 
-import 'package:flutter_gallery/demo/shrine/model/app_state_model.dart';
-import 'package:flutter_gallery/demo/shrine/model/product.dart';
+import '../model/app_state_model.dart';
+import '../model/product.dart';
 
 class ProductCard extends StatelessWidget {
   const ProductCard({ Key? key, this.imageAspectRatio = 33 / 49, this.product })
@@ -46,7 +46,6 @@ class ProductCard extends StatelessWidget {
         children: <Widget>[
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
               AspectRatio(
                 aspectRatio: imageAspectRatio,
@@ -57,7 +56,6 @@ class ProductCard extends StatelessWidget {
                 width: 121.0,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: <Widget>[
                     Text(
                       product == null ? '' : product!.name,

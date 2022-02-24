@@ -3,36 +3,21 @@
 // found in the LICENSE file.
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/rendering.dart';
 
 import '../rendering/mock_canvas.dart';
+import '../widgets/clipboard_utils.dart';
 import '../widgets/editable_text_utils.dart';
-
-class MockClipboard {
-  Object _clipboardData = <String, dynamic>{
-    'text': null,
-  };
-
-  Future<dynamic> handleMethodCall(MethodCall methodCall) async {
-    switch (methodCall.method) {
-      case 'Clipboard.getData':
-        return _clipboardData;
-      case 'Clipboard.setData':
-        _clipboardData = methodCall.arguments as Object;
-        break;
-    }
-  }
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final MockClipboard mockClipboard = MockClipboard();
-  SystemChannels.platform.setMockMethodCallHandler(mockClipboard.handleMethodCall);
+  TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, mockClipboard.handleMethodCall);
 
   setUp(() async {
     // Fill the clipboard so that the Paste option is available in the text
@@ -89,14 +74,14 @@ void main() {
     await tester.pump();
     await gesture.up();
     await tester.pumpAndSettle();
-    expect(controller.selection, const TextSelection(baseOffset: 11, extentOffset: 11, affinity: TextAffinity.upstream));
+    expect(controller.selection, const TextSelection.collapsed(offset: 11, affinity: TextAffinity.upstream));
     expect(find.text('Cut'), findsNothing);
     expect(find.text('Copy'), findsNothing);
     expect(find.text('Paste'), findsOneWidget);
     await tester.tap(find.text('Paste'));
     await tester.pumpAndSettle();
     expect(controller.text, 'blah1 blah2blah1');
-    expect(controller.selection, const TextSelection(baseOffset: 16, extentOffset: 16));
+    expect(controller.selection, const TextSelection.collapsed(offset: 16));
 
     // Cut the first word.
     await gesture.down(midBlah1);
@@ -112,7 +97,23 @@ void main() {
     expect(controller.text, ' blah2blah1');
     expect(controller.selection, const TextSelection(baseOffset: 0, extentOffset: 0));
     expect(find.byType(CupertinoButton), findsNothing);
-  }, variant: const TargetPlatformVariant(<TargetPlatform>{ TargetPlatform.macOS, TargetPlatform.windows, TargetPlatform.linux }), skip: kIsWeb);
+  },
+    variant: TargetPlatformVariant.desktop(),
+    skip: kIsWeb, // [intended] we don't supply the cut/copy/paste buttons on the web.
+  );
+
+  testWidgets('TextFormField accepts TextField.noMaxLength as value to maxLength parameter', (WidgetTester tester) async {
+    bool asserted;
+    try {
+      TextFormField(
+        maxLength: TextField.noMaxLength,
+      );
+      asserted = false;
+    } catch (e) {
+      asserted = true;
+    }
+    expect(asserted, false);
+  });
 
   testWidgets('Passes textAlign to underlying TextField', (WidgetTester tester) async {
     const TextAlign alignment = TextAlign.center;
@@ -458,7 +459,7 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 200));
     expect(renderEditable, paintsExactlyCountTimes(#drawRect, 0));
-  }, skip: isBrowser); // We do not use Flutter-rendered context menu on the Web
+  }, skip: isBrowser); // [intended] We do not use Flutter-rendered context menu on the Web.
 
   testWidgets('onTap is called upon tap', (WidgetTester tester) async {
     int tapCount = 0;
@@ -490,15 +491,15 @@ void main() {
   // Regression test for https://github.com/flutter/flutter/issues/54472.
   testWidgets('reset resets the text fields value to the initialValue', (WidgetTester tester) async {
     await tester.pumpWidget(
-        MaterialApp(
-          home: Material(
-            child: Center(
-              child: TextFormField(
-                initialValue: 'initialValue',
-              ),
+      MaterialApp(
+        home: Material(
+          child: Center(
+            child: TextFormField(
+              initialValue: 'initialValue',
             ),
           ),
-        )
+        ),
+      ),
     );
 
     await tester.enterText(find.byType(TextFormField), 'changedValue');
@@ -511,17 +512,15 @@ void main() {
   });
 
   // Regression test for https://github.com/flutter/flutter/issues/34847.
-  testWidgets('didChange resets the text field\'s value to empty when passed null', (WidgetTester tester) async {
+  testWidgets("didChange resets the text field's value to empty when passed null", (WidgetTester tester) async {
     await tester.pumpWidget(
-        MaterialApp(
-          home: Material(
-            child: Center(
-              child: TextFormField(
-                initialValue: null,
-              ),
-            ),
+      MaterialApp(
+        home: Material(
+          child: Center(
+            child: TextFormField(),
           ),
-        )
+        ),
+      ),
     );
 
     await tester.enterText(find.byType(TextFormField), 'changedValue');
@@ -536,17 +535,15 @@ void main() {
   });
 
   // Regression test for https://github.com/flutter/flutter/issues/34847.
-  testWidgets('reset resets the text field\'s value to empty when intialValue is null', (WidgetTester tester) async {
+  testWidgets("reset resets the text field's value to empty when initialValue is null", (WidgetTester tester) async {
     await tester.pumpWidget(
-        MaterialApp(
-          home: Material(
-            child: Center(
-              child: TextFormField(
-                initialValue: null,
-              ),
-            ),
+      MaterialApp(
+        home: Material(
+          child: Center(
+            child: TextFormField(),
           ),
-        )
+        ),
+      ),
     );
 
     await tester.enterText(find.byType(TextFormField), 'changedValue');
@@ -571,7 +568,7 @@ void main() {
             ),
           ),
         ),
-      )
+      ),
     );
 
     expect(find.text('initialValue'), findsOneWidget);
@@ -650,23 +647,6 @@ void main() {
     await tester.enterText(find.byType(TextField), 'a');
     await tester.pump();
     expect(_validateCalled, 1);
-  });
-
-  testWidgets('autovalidateMode and autovalidate should not be used at the same time', (WidgetTester tester) async {
-    expect(() async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Material(
-            child: Scaffold(
-              body: TextFormField(
-                autovalidate: true,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-              ),
-            ),
-          ),
-        ),
-      );
-      }, throwsAssertionError);
   });
 
   testWidgets('textSelectionControls is passed to super', (WidgetTester tester) async {

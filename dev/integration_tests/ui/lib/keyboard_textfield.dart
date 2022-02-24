@@ -14,7 +14,7 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key key}) : super(key: key);
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -27,10 +27,10 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key key}) : super(key: key);
+  const MyHomePage({Key? key}) : super(key: key);
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
@@ -48,13 +48,23 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final String softKeyboardVisibility = MediaQuery.of(context).viewInsets.bottom > 100
+      ? 'keyboard visible'
+      : 'keyboard not visible';
     return Scaffold(
       body: Column(
         children: <Widget>[
           Text('$offset',
             key: const ValueKey<String>(keys.kOffsetText),
           ),
+          Text(softKeyboardVisibility),
           Expanded(
             child: ListView(
               key: const ValueKey<String>(keys.kListView),

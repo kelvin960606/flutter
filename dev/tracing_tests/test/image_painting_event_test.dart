@@ -7,7 +7,6 @@ import 'dart:convert' show jsonEncode;
 import 'dart:developer' as developer;
 import 'dart:ui' as ui;
 
-import 'package:flutter/painting.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vm_service/vm_service.dart';
@@ -43,7 +42,10 @@ void main() {
 
   test('Image painting events - deduplicates across frames', () async {
     final Completer<Event> completer = Completer<Event>();
-    vmService.onExtensionEvent.first.then(completer.complete);
+    vmService
+        .onExtensionEvent
+        .firstWhere((Event event) => event.extensionKind == 'Flutter.ImageSizesForFrame')
+        .then(completer.complete);
 
     final ui.Image image = await createTestImage(width: 300, height: 300);
     final TestCanvas canvas = TestCanvas();
@@ -70,13 +72,16 @@ void main() {
     expect(event.extensionKind, 'Flutter.ImageSizesForFrame');
     expect(
       jsonEncode(event.extensionData!.data),
-      '{"test.png":{"source":"test.png","displaySize":{"width":200.0,"height":100.0},"imageSize":{"width":300.0,"height":300.0},"displaySizeInBytes":106666,"decodedSizeInBytes":480000}}',
+      '{"test.png":{"source":"test.png","displaySize":{"width":600.0,"height":300.0},"imageSize":{"width":300.0,"height":300.0},"displaySizeInBytes":960000,"decodedSizeInBytes":480000}}',
     );
-  }, skip: isBrowser); // uses dart:isolate and io
+  }, skip: isBrowser); // [intended] uses dart:isolate and io.
 
   test('Image painting events - deduplicates across frames', () async {
     final Completer<Event> completer = Completer<Event>();
-    vmService.onExtensionEvent.first.then(completer.complete);
+    vmService
+        .onExtensionEvent
+        .firstWhere((Event event) => event.extensionKind == 'Flutter.ImageSizesForFrame')
+        .then(completer.complete);
 
     final ui.Image image = await createTestImage(width: 300, height: 300);
     final TestCanvas canvas = TestCanvas();
@@ -99,9 +104,9 @@ void main() {
     expect(event.extensionKind, 'Flutter.ImageSizesForFrame');
     expect(
       jsonEncode(event.extensionData!.data),
-      '{"test.png":{"source":"test.png","displaySize":{"width":300.0,"height":300.0},"imageSize":{"width":300.0,"height":300.0},"displaySizeInBytes":480000,"decodedSizeInBytes":480000}}',
+      '{"test.png":{"source":"test.png","displaySize":{"width":900.0,"height":900.0},"imageSize":{"width":300.0,"height":300.0},"displaySizeInBytes":4320000,"decodedSizeInBytes":480000}}',
     );
-  }, skip: isBrowser); // uses dart:isolate and io
+  }, skip: isBrowser); // [intended] uses dart:isolate and io.
 }
 
 class TestCanvas implements Canvas {

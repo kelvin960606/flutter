@@ -5,11 +5,10 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter/painting.dart';
-
 import 'package:flutter_test/flutter_test.dart';
 
 Future<void> main() async {
@@ -19,14 +18,12 @@ Future<void> main() async {
     imageCache!.putIfAbsent(1, () => OneFrameImageStreamCompleter(
       Future<ImageInfo>.value(ImageInfo(
         image: image,
-        scale: 1.0,
-      ),
-    )));
+      )),
+    ));
 
     await tester.idle();
     expect(imageCache!.currentSize, 1);
-    final ByteData message = const JSONMessageCodec().encodeMessage(
-      <String, dynamic>{'type': 'memoryPressure'})!;
+    final ByteData message = const JSONMessageCodec().encodeMessage(<String, dynamic>{'type': 'memoryPressure'})!;
     await ServicesBinding.instance!.defaultBinaryMessenger.handlePlatformMessage('flutter/system', message, (_) { });
     expect(imageCache!.currentSize, 0);
   });
@@ -39,6 +36,10 @@ Future<void> main() async {
     binding.evict('/path/to/asset.png');
     expect(binding.imageCache.clearCount, 1);
     expect(binding.imageCache.liveClearCount, 1);
+  });
+
+  test('ShaderWarmUp is null by default', () {
+    expect(PaintingBinding.shaderWarmUp, null);
   });
 }
 

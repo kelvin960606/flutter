@@ -39,6 +39,18 @@ class ViewConfiguration {
   }
 
   @override
+  bool operator ==(Object other) {
+    if (other.runtimeType != runtimeType)
+      return false;
+    return other is ViewConfiguration
+        && other.size == size
+        && other.devicePixelRatio == devicePixelRatio;
+  }
+
+  @override
+  int get hashCode => hashValues(size, devicePixelRatio);
+
+  @override
   String toString() => '$size at ${debugFormatDouble(devicePixelRatio)}x';
 }
 
@@ -183,9 +195,6 @@ class RenderView extends RenderObject with RenderObjectWithChildMixin<RenderBox>
   ///    [AnnotatedRegionLayer]s annotated for mouse tracking.
   HitTestResult hitTestMouseTrackers(Offset position) {
     assert(position != null);
-    // Layer hit testing is done using device pixels, so we have to convert
-    // the logical coordinates of the event location back to device pixels
-    // here.
     final BoxHitTestResult result = BoxHitTestResult();
     hitTest(result, position: position);
     return result;
@@ -211,7 +220,9 @@ class RenderView extends RenderObject with RenderObjectWithChildMixin<RenderBox>
   ///
   /// Actually causes the output of the rendering pipeline to appear on screen.
   void compositeFrame() {
-    Timeline.startSync('Compositing', arguments: timelineArgumentsIndicatingLandmarkEvent);
+    if (!kReleaseMode) {
+      Timeline.startSync('COMPOSITING', arguments: timelineArgumentsIndicatingLandmarkEvent);
+    }
     try {
       final ui.SceneBuilder builder = ui.SceneBuilder();
       final ui.Scene scene = layer!.buildScene(builder);
@@ -225,7 +236,9 @@ class RenderView extends RenderObject with RenderObjectWithChildMixin<RenderBox>
         return true;
       }());
     } finally {
-      Timeline.finishSync();
+      if (!kReleaseMode) {
+        Timeline.finishSync();
+      }
     }
   }
 
@@ -291,9 +304,11 @@ class RenderView extends RenderObject with RenderObjectWithChildMixin<RenderBox>
         statusBarBrightness: upperOverlayStyle?.statusBarBrightness,
         statusBarIconBrightness: upperOverlayStyle?.statusBarIconBrightness,
         statusBarColor: upperOverlayStyle?.statusBarColor,
+        systemStatusBarContrastEnforced: upperOverlayStyle?.systemStatusBarContrastEnforced,
         systemNavigationBarColor: lowerOverlayStyle?.systemNavigationBarColor,
         systemNavigationBarDividerColor: lowerOverlayStyle?.systemNavigationBarDividerColor,
         systemNavigationBarIconBrightness: lowerOverlayStyle?.systemNavigationBarIconBrightness,
+        systemNavigationBarContrastEnforced: lowerOverlayStyle?.systemNavigationBarContrastEnforced,
       );
       SystemChrome.setSystemUIOverlayStyle(overlayStyle);
     }

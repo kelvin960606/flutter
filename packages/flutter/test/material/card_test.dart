@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter/rendering.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../widgets/semantics_tester.dart';
@@ -87,7 +87,6 @@ void main() {
         child: Material(
           child: Center(
             child: Card(
-              semanticContainer: true,
               child: Column(
                 children: const <Widget>[
                   Text('First child'),
@@ -181,7 +180,7 @@ void main() {
             clipBehavior: Clip.antiAliasWithSaveLayer,
           ),
         ),
-        child: const Card(clipBehavior: null),
+        child: const Card(),
       );
     }));
     expect(tester.widget<Material>(find.byType(Material)).clipBehavior, Clip.antiAliasWithSaveLayer);
@@ -199,7 +198,7 @@ void main() {
 
     Card _getCard(WidgetTester tester) {
       return tester.widget<Card>(
-          find.byType(Card)
+        find.byType(Card),
       );
     }
 

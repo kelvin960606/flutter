@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/src/foundation/constants.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/material.dart';
 
 class _TestSliverPersistentHeaderDelegate extends SliverPersistentHeaderDelegate {
   _TestSliverPersistentHeaderDelegate({
@@ -233,7 +233,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: MediaQuery(
-          data: const MediaQueryData(devicePixelRatio: 1.0),
+          data: const MediaQueryData(),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Material(
@@ -244,10 +244,10 @@ void main() {
                     color: Colors.red,
                   ),
                   Container(
+                    color: Colors.green,
                     child: TextField(
                       controller: textController,
                     ),
-                    color: Colors.green,
                   ),
                   Container(
                     color: Colors.red,
@@ -383,12 +383,11 @@ void main() {
               height: 600.0,
               width: 600.0,
               child: CustomScrollView(
-                controller: controller = ScrollController(initialScrollOffset: 0),
+                controller: controller = ScrollController(),
                 slivers: List<Widget>.generate(50, (int i) {
                   return i == 10
                   ? SliverPersistentHeader(
                     pinned: true,
-                    floating: false,
                     delegate: _TestSliverPersistentHeaderDelegate(
                       minExtent: 50,
                       maxExtent: 50,
@@ -427,7 +426,8 @@ void main() {
       await tester.pumpAndSettle();
       // The scroll offset should remain the same.
       expect(controller.offset, 100.0 * 15);
-  });
+    },
+  );
 
   testWidgets(
     'A pinned persistent header should not scroll when its descendant EditableText gains focus (no animation)',
@@ -445,12 +445,11 @@ void main() {
               height: 600.0,
               width: 600.0,
               child: CustomScrollView(
-                controller: controller = ScrollController(initialScrollOffset: 0),
+                controller: controller = ScrollController(),
                 slivers: List<Widget>.generate(50, (int i) {
                   return i == 10
                     ? SliverPersistentHeader(
                       pinned: true,
-                      floating: false,
                       delegate: _TestSliverPersistentHeaderDelegate(
                         minExtent: 50,
                         maxExtent: 50,
@@ -490,7 +489,8 @@ void main() {
       await tester.pumpAndSettle();
       // The scroll offset should remain the same.
       expect(controller.offset, 100.0 * 15);
-  });
+    },
+  );
 
   void testShowCaretOnScreen({ required bool readOnly }) {
     group('EditableText._showCaretOnScreen, readOnly=$readOnly', () {

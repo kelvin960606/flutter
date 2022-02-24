@@ -4,6 +4,12 @@
 
 // @dart = 2.8
 
+// TODO(gspencergoog): Remove this tag once this test's state leaks/test
+// dependencies have been fixed.
+// https://github.com/flutter/flutter/issues/85160
+// Fails with "flutter test --test-randomize-ordering-seed=1000"
+@Tags(<String>['no-shuffle'])
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -17,7 +23,6 @@ import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/commands/packages.dart';
 import 'package:flutter_tools/src/dart/pub.dart';
-import 'package:flutter_tools/src/reporting/reporting.dart';
 import 'package:flutter_tools/src/globals.dart' as globals;
 
 import '../../src/common.dart';
@@ -240,8 +245,7 @@ void main() {
       final PackagesCommand command = await runCommandIn(projectPath, 'get');
       final PackagesGetCommand getCommand = command.subcommands['get'] as PackagesGetCommand;
 
-      expect(await getCommand.usageValues,
-             containsPair(CustomDimensions.commandPackagesNumberPlugins, '0'));
+      expect((await getCommand.usageValues).commandPackagesNumberPlugins, 0);
     }, overrides: <Type, Generator>{
       Pub: () => Pub(
         fileSystem: globals.fs,
@@ -263,8 +267,7 @@ void main() {
       final PackagesCommand command = await runCommandIn(exampleProjectPath, 'get');
       final PackagesGetCommand getCommand = command.subcommands['get'] as PackagesGetCommand;
 
-      expect(await getCommand.usageValues,
-          containsPair(CustomDimensions.commandPackagesNumberPlugins, '1'));
+      expect((await getCommand.usageValues).commandPackagesNumberPlugins, 1);
     }, overrides: <Type, Generator>{
       Pub: () => Pub(
         fileSystem: globals.fs,
@@ -284,8 +287,7 @@ void main() {
       final PackagesCommand command = await runCommandIn(projectPath, 'get');
       final PackagesGetCommand getCommand = command.subcommands['get'] as PackagesGetCommand;
 
-      expect(await getCommand.usageValues,
-             containsPair(CustomDimensions.commandPackagesProjectModule, 'false'));
+      expect((await getCommand.usageValues).commandPackagesProjectModule, false);
     }, overrides: <Type, Generator>{
       Pub: () => Pub(
         fileSystem: globals.fs,
@@ -305,8 +307,7 @@ void main() {
       final PackagesCommand command = await runCommandIn(projectPath, 'get');
       final PackagesGetCommand getCommand = command.subcommands['get'] as PackagesGetCommand;
 
-      expect(await getCommand.usageValues,
-             containsPair(CustomDimensions.commandPackagesProjectModule, 'true'));
+      expect((await getCommand.usageValues).commandPackagesProjectModule, true);
     }, overrides: <Type, Generator>{
       Pub: () => Pub(
         fileSystem: globals.fs,
@@ -335,8 +336,7 @@ void main() {
       final PackagesCommand command = await runCommandIn(projectPath, 'get');
       final PackagesGetCommand getCommand = command.subcommands['get'] as PackagesGetCommand;
 
-      expect(await getCommand.usageValues,
-             containsPair(CustomDimensions.commandPackagesAndroidEmbeddingVersion, 'v1'));
+      expect((await getCommand.usageValues).commandPackagesAndroidEmbeddingVersion, 'v1');
     }, overrides: <Type, Generator>{
       Pub: () => Pub(
         fileSystem: globals.fs,
@@ -356,8 +356,7 @@ void main() {
       final PackagesCommand command = await runCommandIn(projectPath, 'get');
       final PackagesGetCommand getCommand = command.subcommands['get'] as PackagesGetCommand;
 
-      expect(await getCommand.usageValues,
-             containsPair(CustomDimensions.commandPackagesAndroidEmbeddingVersion, 'v2'));
+      expect((await getCommand.usageValues).commandPackagesAndroidEmbeddingVersion, 'v2');
     }, overrides: <Type, Generator>{
       Pub: () => Pub(
         fileSystem: globals.fs,
@@ -444,22 +443,23 @@ void main() {
     FakeStdio mockStdio;
 
     setUp(() {
-      processManager = FakeProcessManager.list(<FakeCommand>[]);
+      processManager = FakeProcessManager.empty();
       mockStdio = FakeStdio()..stdout.terminalColumns = 80;
     });
 
     testUsingContext('test without bot', () async {
       Cache.flutterRoot = '';
+      globals.fs.directory('/packages/flutter_tools').createSync(recursive: true);
       globals.fs.file('pubspec.yaml').createSync();
       processManager.addCommand(
-        const FakeCommand(command: <String>['/bin/cache/dart-sdk/bin/pub', 'run', 'test']),
+        const FakeCommand(command: <String>['/bin/cache/dart-sdk/bin/dart', '__deprecated_pub', 'run', 'test']),
       );
       await createTestCommandRunner(PackagesCommand()).run(<String>['packages', 'test']);
 
       expect(processManager, hasNoRemainingExpectations);
     }, overrides: <Type, Generator>{
       FileSystem: () => MemoryFileSystem.test(),
-      Platform: () => FakePlatform(operatingSystem: 'linux', environment: <String, String>{}),
+      Platform: () => FakePlatform(environment: <String, String>{}),
       ProcessManager: () => processManager,
       Stdio: () => mockStdio,
       BotDetector: () => const FakeBotDetector(false),
@@ -477,14 +477,14 @@ void main() {
       Cache.flutterRoot = '';
       globals.fs.file('pubspec.yaml').createSync();
       processManager.addCommand(
-        const FakeCommand(command: <String>['/bin/cache/dart-sdk/bin/pub', '--trace', 'run', 'test']),
+        const FakeCommand(command: <String>['/bin/cache/dart-sdk/bin/dart', '__deprecated_pub', '--trace', 'run', 'test']),
       );
       await createTestCommandRunner(PackagesCommand()).run(<String>['packages', 'test']);
 
       expect(processManager, hasNoRemainingExpectations);
     }, overrides: <Type, Generator>{
       FileSystem: () => MemoryFileSystem.test(),
-      Platform: () => FakePlatform(operatingSystem: 'linux', environment: <String, String>{}),
+      Platform: () => FakePlatform(environment: <String, String>{}),
       ProcessManager: () => processManager,
       Stdio: () => mockStdio,
       BotDetector: () => const FakeBotDetector(true),
@@ -504,7 +504,7 @@ void main() {
       final IOSink stdin = IOSink(StreamController<List<int>>().sink);
       processManager.addCommand(
         FakeCommand(command: const <String>[
-          '/bin/cache/dart-sdk/bin/pub', 'run', '--foo', 'bar'],
+          '/bin/cache/dart-sdk/bin/dart', '__deprecated_pub', 'run', '--foo', 'bar'],
           stdin: stdin,
         ),
       );
@@ -513,7 +513,61 @@ void main() {
       expect(processManager, hasNoRemainingExpectations);
     }, overrides: <Type, Generator>{
       FileSystem: () => MemoryFileSystem.test(),
-      Platform: () => FakePlatform(operatingSystem: 'linux', environment: <String, String>{}),
+      Platform: () => FakePlatform(environment: <String, String>{}),
+      ProcessManager: () => processManager,
+      Stdio: () => mockStdio,
+      Pub: () => Pub(
+        fileSystem: globals.fs,
+        logger: globals.logger,
+        processManager: globals.processManager,
+        usage: globals.flutterUsage,
+        botDetector: globals.botDetector,
+        platform: globals.platform,
+      ),
+    });
+
+    testUsingContext('token pass arguments through to pub', () async {
+      Cache.flutterRoot = '';
+      globals.fs.file('pubspec.yaml').createSync();
+      final IOSink stdin = IOSink(StreamController<List<int>>().sink);
+      processManager.addCommand(
+        FakeCommand(command: const <String>[
+          '/bin/cache/dart-sdk/bin/dart', '__deprecated_pub', 'token', 'list'],
+          stdin: stdin,
+        ),
+      );
+      await createTestCommandRunner(PackagesCommand()).run(<String>['packages', '--verbose', 'pub', 'token', 'list']);
+
+      expect(processManager, hasNoRemainingExpectations);
+    }, overrides: <Type, Generator>{
+      FileSystem: () => MemoryFileSystem.test(),
+      Platform: () => FakePlatform(environment: <String, String>{}),
+      ProcessManager: () => processManager,
+      Stdio: () => mockStdio,
+      Pub: () => Pub(
+        fileSystem: globals.fs,
+        logger: globals.logger,
+        processManager: globals.processManager,
+        usage: globals.flutterUsage,
+        botDetector: globals.botDetector,
+        platform: globals.platform,
+      ),
+    });
+
+    testUsingContext('upgrade does not check for pubspec.yaml if -h/--help is passed', () async {
+      Cache.flutterRoot = '';
+      processManager.addCommand(
+        FakeCommand(command: const <String>[
+          '/bin/cache/dart-sdk/bin/dart', '__deprecated_pub', 'upgrade', '-h'],
+          stdin:  IOSink(StreamController<List<int>>().sink),
+        ),
+      );
+      await createTestCommandRunner(PackagesCommand()).run(<String>['pub', 'upgrade', '-h']);
+
+      expect(processManager, hasNoRemainingExpectations);
+    }, overrides: <Type, Generator>{
+      FileSystem: () => MemoryFileSystem.test(),
+      Platform: () => FakePlatform(environment: <String, String>{}),
       ProcessManager: () => processManager,
       Stdio: () => mockStdio,
       Pub: () => Pub(

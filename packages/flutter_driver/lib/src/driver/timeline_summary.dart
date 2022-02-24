@@ -9,8 +9,10 @@ import 'package:file/file.dart';
 import 'package:path/path.dart' as path;
 
 import 'common.dart';
+import 'gc_summarizer.dart';
 import 'percentile_utils.dart';
 import 'profiling_summarizer.dart';
+import 'raster_cache_summarizer.dart';
 import 'scene_display_lag_summarizer.dart';
 import 'timeline.dart';
 import 'vsync_frame_lag_summarizer.dart';
@@ -95,6 +97,20 @@ class TimelineSummary {
   /// The total number of rasterizer cycles recorded in the timeline.
   int countRasterizations() => _extractGpuRasterizerDrawDurations().length;
 
+  /// The total number of old generation garbage collections recorded in the timeline.
+  int oldGenerationGarbageCollections() {
+    return _timeline.events!.where((TimelineEvent event) {
+      return event.category == 'GC' && event.name == 'CollectOldGeneration';
+    }).length;
+  }
+
+  /// The total number of new generation garbage collections recorded in the timeline.
+  int newGenerationGarbageCollections() {
+    return _timeline.events!.where((TimelineEvent event) {
+      return event.category == 'GC' && event.name == 'CollectNewGeneration';
+    }).length;
+  }
+
   /// Encodes this summary as JSON.
   ///
   /// Data ends with "_time_millis" means time in milliseconds and numbers in
@@ -158,10 +174,52 @@ class TimelineSummary {
   ///   The 90/99-th percentile delay between platform vsync signal and engine
   ///   frame process start time.
   ///   See [VsyncFrameLagSummarizer.computePercentileVsyncFrameLag].
+  /// * "average_layer_cache_count": The average of the values seen for the
+  ///   count of the engine layer cache entries.
+  ///   See [RasterCacheSummarizer.computeAverageLayerCount].
+  /// * "90th_percentile_layer_cache_count" and
+  ///   "99th_percentile_layer_cache_count": The 90/99-th percentile values seen
+  ///   for the count of the engine layer cache entries.
+  ///   See [RasterCacheSummarizer.computePercentileLayerCount].
+  /// * "worst_layer_cache_count": The worst (highest) value seen for the
+  ///   count of the engine layer cache entries.
+  ///   See [RasterCacheSummarizer.computeWorstLayerCount].
+  /// * "average_layer_cache_memory": The average of the values seen for the
+  ///   memory used for the engine layer cache entries, in megabytes.
+  ///   See [RasterCacheSummarizer.computeAverageLayerMemory].
+  /// * "90th_percentile_layer_cache_memory" and
+  ///   "99th_percentile_layer_cache_memory": The 90/99-th percentile values seen
+  ///   for the memory used for the engine layer cache entries.
+  ///   See [RasterCacheSummarizer.computePercentileLayerMemory].
+  /// * "worst_layer_cache_memory": The worst (highest) value seen for the
+  ///   memory used for the engine layer cache entries.
+  ///   See [RasterCacheSummarizer.computeWorstLayerMemory].
+  /// * "average_picture_cache_count": The average of the values seen for the
+  ///   count of the engine picture cache entries.
+  ///   See [RasterCacheSummarizer.computeAveragePictureCount].
+  /// * "90th_percentile_picture_cache_count" and
+  ///   "99th_percentile_picture_cache_count": The 90/99-th percentile values seen
+  ///   for the count of the engine picture cache entries.
+  ///   See [RasterCacheSummarizer.computePercentilePictureCount].
+  /// * "worst_picture_cache_count": The worst (highest) value seen for the
+  ///   count of the engine picture cache entries.
+  ///   See [RasterCacheSummarizer.computeWorstPictureCount].
+  /// * "average_picture_cache_memory": The average of the values seen for the
+  ///   memory used for the engine picture cache entries, in megabytes.
+  ///   See [RasterCacheSummarizer.computeAveragePictureMemory].
+  /// * "90th_percentile_picture_cache_memory" and
+  ///   "99th_percentile_picture_cache_memory": The 90/99-th percentile values seen
+  ///   for the memory used for the engine picture cache entries.
+  ///   See [RasterCacheSummarizer.computePercentilePictureMemory].
+  /// * "worst_picture_cache_memory": The worst (highest) value seen for the
+  ///   memory used for the engine picture cache entries.
+  ///   See [RasterCacheSummarizer.computeWorstPictureMemory].
   Map<String, dynamic> get summaryJson {
     final SceneDisplayLagSummarizer sceneDisplayLagSummarizer = _sceneDisplayLagSummarizer();
     final VsyncFrameLagSummarizer vsyncFrameLagSummarizer = _vsyncFrameLagSummarizer();
     final Map<String, dynamic> profilingSummary = _profilingSummarizer().summarize();
+    final RasterCacheSummarizer rasterCacheSummarizer = _rasterCacheSummarizer();
+    final GCSummarizer gcSummarizer = _gcSummarizer();
 
     final Map<String, dynamic> timelineSummary = <String, dynamic>{
       'average_frame_build_time_millis': computeAverageFrameBuildTimeMillis(),
@@ -176,6 +234,8 @@ class TimelineSummary {
       'missed_frame_rasterizer_budget_count': computeMissedFrameRasterizerBudgetCount(),
       'frame_count': countFrames(),
       'frame_rasterizer_count': countRasterizations(),
+      'new_gen_gc_count': newGenerationGarbageCollections(),
+      'old_gen_gc_count': oldGenerationGarbageCollections(),
       'frame_build_times': _extractFrameDurations()
           .map<int>((Duration duration) => duration.inMicroseconds)
           .toList(),
@@ -194,6 +254,23 @@ class TimelineSummary {
       'average_vsync_frame_lag': vsyncFrameLagSummarizer.computeAverageVsyncFrameLag(),
       '90th_percentile_vsync_frame_lag': vsyncFrameLagSummarizer.computePercentileVsyncFrameLag(90.0),
       '99th_percentile_vsync_frame_lag': vsyncFrameLagSummarizer.computePercentileVsyncFrameLag(99.0),
+      'average_layer_cache_count': rasterCacheSummarizer.computeAverageLayerCount(),
+      '90th_percentile_layer_cache_count': rasterCacheSummarizer.computePercentileLayerCount(90.0),
+      '99th_percentile_layer_cache_count': rasterCacheSummarizer.computePercentileLayerCount(99.0),
+      'worst_layer_cache_count': rasterCacheSummarizer.computeWorstLayerCount(),
+      'average_layer_cache_memory': rasterCacheSummarizer.computeAverageLayerMemory(),
+      '90th_percentile_layer_cache_memory': rasterCacheSummarizer.computePercentileLayerMemory(90.0),
+      '99th_percentile_layer_cache_memory': rasterCacheSummarizer.computePercentileLayerMemory(99.0),
+      'worst_layer_cache_memory': rasterCacheSummarizer.computeWorstLayerMemory(),
+      'average_picture_cache_count': rasterCacheSummarizer.computeAveragePictureCount(),
+      '90th_percentile_picture_cache_count': rasterCacheSummarizer.computePercentilePictureCount(90.0),
+      '99th_percentile_picture_cache_count': rasterCacheSummarizer.computePercentilePictureCount(99.0),
+      'worst_picture_cache_count': rasterCacheSummarizer.computeWorstPictureCount(),
+      'average_picture_cache_memory': rasterCacheSummarizer.computeAveragePictureMemory(),
+      '90th_percentile_picture_cache_memory': rasterCacheSummarizer.computePercentilePictureMemory(90.0),
+      '99th_percentile_picture_cache_memory': rasterCacheSummarizer.computePercentilePictureMemory(99.0),
+      'worst_picture_cache_memory': rasterCacheSummarizer.computeWorstPictureMemory(),
+      'total_ui_gc_time': gcSummarizer.totalGCTimeMillis,
     };
 
     timelineSummary.addAll(profilingSummary);
@@ -277,7 +354,7 @@ class TimelineSummary {
     // Timeline does not guarantee that the first event is the "begin" event.
     TimelineEvent? begin;
     for (final TimelineEvent event in events) {
-      if (event.phase == 'B') {
+      if (event.phase == 'B' || event.phase == 'b') {
         begin = event;
       } else {
         if (begin != null) {
@@ -356,4 +433,8 @@ class TimelineSummary {
   List<Duration> _extractFrameDurations() => _extractBeginEndEvents(kBuildFrameEventName);
 
   VsyncFrameLagSummarizer _vsyncFrameLagSummarizer() => VsyncFrameLagSummarizer(_extractEventsWithNames(kVsyncTimelineEventNames));
+
+  RasterCacheSummarizer _rasterCacheSummarizer() => RasterCacheSummarizer(_extractNamedEvents(kRasterCacheEvent));
+
+  GCSummarizer _gcSummarizer() => GCSummarizer.fromEvents(_extractEventsWithNames(kGCRootEvents));
 }

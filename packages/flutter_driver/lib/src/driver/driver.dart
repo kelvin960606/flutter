@@ -147,7 +147,12 @@ abstract class FlutterDriver {
     Map<String, dynamic>? headers,
   }) async {
     if (Platform.environment['FLUTTER_WEB_TEST'] != null) {
-      return WebFlutterDriver.connectWeb(hostUrl: dartVmServiceUrl, timeout: timeout);
+      return WebFlutterDriver.connectWeb(
+        hostUrl: dartVmServiceUrl,
+        timeout: timeout,
+        printCommunication: printCommunication,
+        logCommunicationToFile: logCommunicationToFile,
+      );
     }
     return VMServiceFlutterDriver.connect(
       dartVmServiceUrl: dartVmServiceUrl,
@@ -169,8 +174,12 @@ abstract class FlutterDriver {
   async_io.WebDriver get webDriver => throw UnimplementedError();
 
   /// Enables accessibility feature.
+  @Deprecated(
+    'Call setSemantics(true) instead. '
+    'This feature was deprecated after v2.3.0-12.1.pre.'
+  )
   Future<void> enableAccessibility() async {
-    throw UnimplementedError();
+    await setSemantics(true);
   }
 
   /// Sends [command] to the Flutter Driver extensions.
@@ -218,6 +227,11 @@ abstract class FlutterDriver {
   /// Waits until [finder] can no longer locate the target.
   Future<void> waitForAbsent(SerializableFinder finder, { Duration? timeout }) async {
     await sendCommand(WaitForAbsent(finder, timeout: timeout));
+  }
+
+  /// Waits until [finder] is tappable.
+  Future<void> waitForTappable(SerializableFinder finder, { Duration? timeout }) async {
+    await sendCommand(WaitForTappable(finder, timeout: timeout));
   }
 
   /// Waits until the given [waitCondition] is satisfied.
@@ -512,6 +526,13 @@ abstract class FlutterDriver {
   ///
   /// Returns true when the call actually changed the state from on to off or
   /// vice versa.
+  ///
+  /// Does not enable or disable the assistive technology installed on the
+  /// device. For example, this does not enable VoiceOver on iOS, TalkBack on
+  /// Android, or NVDA on Windows.
+  ///
+  /// Enabling semantics on the web causes the engine to render ARIA-annotated
+  /// HTML.
   Future<bool> setSemantics(bool enabled, { Duration? timeout }) async {
     final SetSemanticsResult result = SetSemanticsResult.fromJson(await sendCommand(SetSemantics(enabled, timeout: timeout)));
     return result.changedState;
@@ -535,53 +556,55 @@ abstract class FlutterDriver {
   ///
   /// The image will be returned as a PNG.
   ///
-  ///  HACK: There will be a 2-second artificial delay before screenshotting,
-  ///        the delay here is to deal with a race between the driver script and
-  ///        the raster thread (formerly known as the GPU thread). The issue is
-  ///        that driver API synchronizes with the framework based on transient
-  ///        callbacks, which are out of sync with the raster thread.
-  ///        Here's the timeline of events in ASCII art:
+  /// **Warning:** This is not reliable.
   ///
-  ///        -------------------------------------------------------------------
-  ///        Without this delay:
-  ///        -------------------------------------------------------------------
-  ///        UI    : <-- build -->
-  ///        Raster:               <-- rasterize -->
-  ///        Gap   :              | random |
-  ///        Driver:                        <-- screenshot -->
+  /// There is a two-second artificial delay before screenshotting. The delay
+  /// here is to deal with a race between the driver script and the raster
+  /// thread (formerly known as the GPU thread). The issue is that the driver
+  /// API synchronizes with the framework based on transient callbacks, which
+  /// are out of sync with the raster thread.
   ///
-  ///        In the diagram above, the gap is the time between the last driver
-  ///        action taken, such as a `tap()`, and the subsequent call to
-  ///        `screenshot()`. The gap is random because it is determined by the
-  ///        unpredictable network communication between the driver process and
-  ///        the application. If this gap is too short, which it typically will
-  ///        be, the screenshot is taken before the raster thread is done
-  ///        rasterizing the frame, so the screenshot of the previous frame is
-  ///        taken, which is wrong.
+  /// Here's the timeline of events in ASCII art:
   ///
-  ///        -------------------------------------------------------------------
-  ///        With this delay, if we're lucky:
-  ///        -------------------------------------------------------------------
-  ///        UI    : <-- build -->
-  ///        Raster:               <-- rasterize -->
-  ///        Gap   :              |    2 seconds or more   |
-  ///        Driver:                                        <-- screenshot -->
+  ///     ---------------------------------------------------------------
+  ///     Without this delay:
+  ///     ---------------------------------------------------------------
+  ///     UI    : <-- build -->
+  ///     Raster:               <-- rasterize -->
+  ///     Gap   :              | random |
+  ///     Driver:                        <-- screenshot -->
   ///
-  ///        The two-second gap should be long enough for the raster thread to
-  ///        finish rasterizing the frame, but not longer than necessary to keep
-  ///        driver tests as fast a possible.
+  /// In the diagram above, the gap is the time between the last driver action
+  /// taken, such as a `tap()`, and the subsequent call to `screenshot()`. The
+  /// gap is random because it is determined by the unpredictable communication
+  /// channel between the driver process and the application. If this gap is too
+  /// short, which it typically will be, the screenshot is taken before the
+  /// raster thread is done rasterizing the frame, so the screenshot of the
+  /// previous frame is taken, which is not what is intended.
   ///
-  ///        -------------------------------------------------------------------
-  ///        With this delay, if we're not lucky:
-  ///        -------------------------------------------------------------------
-  ///        UI    : <-- build -->
-  ///        Raster:               <-- rasterize randomly slow today -->
-  ///        Gap   :              |    2 seconds or more   |
-  ///        Driver:                                        <-- screenshot -->
+  ///     ---------------------------------------------------------------
+  ///     With this delay, if we're lucky:
+  ///     ---------------------------------------------------------------
+  ///     UI    : <-- build -->
+  ///     Raster:               <-- rasterize -->
+  ///     Gap   :              |    2 seconds or more   |
+  ///     Driver:                                        <-- screenshot -->
   ///
-  ///        In practice, sometimes the device gets really busy for a while and
-  ///        even two seconds isn't enough, which means that this is still racy
-  ///        and a source of flakes.
+  /// The two-second gap should be long enough for the raster thread to finish
+  /// rasterizing the frame, but not longer than necessary to keep driver tests
+  /// as fast a possible.
+  ///
+  ///     ---------------------------------------------------------------
+  ///     With this delay, if we're not lucky:
+  ///     ---------------------------------------------------------------
+  ///     UI    : <-- build -->
+  ///     Raster:               <-- rasterize randomly slow today -->
+  ///     Gap   :              |    2 seconds or more   |
+  ///     Driver:                                        <-- screenshot -->
+  ///
+  /// In practice, sometimes the device gets really busy for a while and even
+  /// two seconds isn't enough, which means that this is still racy and a source
+  /// of flakes.
   Future<List<int>> screenshot() async {
     throw UnimplementedError();
   }
@@ -604,7 +627,7 @@ abstract class FlutterDriver {
   ///       ...
   ///     ]
   ///
-  /// [getFlagList]: https://github.com/dart-lang/sdk/blob/master/runtime/vm/service/service.md#getflaglist
+  /// [getFlagList]: https://github.com/dart-lang/sdk/blob/main/runtime/vm/service/service.md#getflaglist
   ///
   /// Throws [UnimplementedError] on [WebFlutterDriver] instances.
   Future<List<Map<String, dynamic>>> getVmFlags() async {
@@ -721,7 +744,8 @@ abstract class FlutterDriver {
 class CommonFinders {
   const CommonFinders._();
 
-  /// Finds [Text] and [EditableText] widgets containing string equal to [text].
+  /// Finds [widgets.Text] and [widgets.EditableText] widgets containing string
+  /// equal to [text].
   SerializableFinder text(String text) => ByText(text);
 
   /// Finds widgets by [key]. Only [String] and [int] values can be used.
@@ -793,5 +817,5 @@ class DriverOffset {
   }
 
   @override
-  int get hashCode => dx.hashCode ^ dy.hashCode;
+  int get hashCode => Object.hash(dx, dy);
 }

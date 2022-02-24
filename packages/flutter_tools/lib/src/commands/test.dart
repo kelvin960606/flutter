@@ -12,10 +12,10 @@ import '../asset.dart';
 import '../base/common.dart';
 import '../base/file_system.dart';
 import '../build_info.dart';
-import '../bundle.dart';
+import '../bundle_builder.dart';
 import '../devfs.dart';
 import '../device.dart';
-import '../globals_null_migrated.dart' as globals;
+import '../globals.dart' as globals;
 import '../project.dart';
 import '../runner/flutter_command.dart';
 import '../test/coverage_collector.dart';
@@ -73,6 +73,7 @@ class TestCommand extends FlutterCommand with DeviceBasedDevelopmentArtifacts {
     usesDartDefineOption();
     usesWebRendererOption();
     usesDeviceUserOption();
+    usesFlavorOption();
 
     argParser
       ..addMultiOption('name',
@@ -140,7 +141,7 @@ class TestCommand extends FlutterCommand with DeviceBasedDevelopmentArtifacts {
       )
       ..addFlag('update-goldens',
         negatable: false,
-        help: 'Whether "matchesGoldenFile()" calls within your test methods should '
+        help: 'Whether "matchesGoldenFile()" calls within your test methods should ' // flutter_ignore: golden_tag (see analyze.dart)
               'update the golden files rather than test for an existing match.',
       )
       ..addOption('concurrency',
@@ -167,7 +168,7 @@ class TestCommand extends FlutterCommand with DeviceBasedDevelopmentArtifacts {
         defaultsTo: 'tester',
         help: 'Selects the test backend.',
         allowedHelp: <String, String>{
-          'tester': 'Run tests using the default VM-based test environment.',
+          'tester': 'Run tests using the VM-based test environment.',
           'chrome': '(deprecated) Run tests using the Google Chrome web browser. '
                     'This value is intended for testing the Flutter framework '
                     'itself and may be removed at any time.',
@@ -216,7 +217,8 @@ class TestCommand extends FlutterCommand with DeviceBasedDevelopmentArtifacts {
               'or as the string "none" to disable the timeout entirely.',
         defaultsTo: '30s',
       );
-      addDdsOptions(verboseHelp: verboseHelp);
+    addDdsOptions(verboseHelp: verboseHelp);
+    usesFatalWarningsOption(verboseHelp: verboseHelp);
   }
 
   /// The interface for starting and configuring the tester.
@@ -250,11 +252,14 @@ class TestCommand extends FlutterCommand with DeviceBasedDevelopmentArtifacts {
   String get description => 'Run Flutter unit tests for the current project.';
 
   @override
+  String get category => FlutterCommandCategory.project;
+
+  @override
   Future<FlutterCommandResult> verifyThenRunCommand(String commandPath) {
     _testFiles = argResults.rest.map<String>(globals.fs.path.absolute).toList();
     if (_testFiles.isEmpty) {
       // We don't scan the entire package, only the test/ subdirectory, so that
-      // files with names like like "hit_test.dart" don't get run.
+      // files with names like "hit_test.dart" don't get run.
       final Directory testDir = globals.fs.directory('test');
       if (!testDir.existsSync()) {
         throwToolExit('Test directory "${testDir.path}" not found.');
@@ -280,7 +285,7 @@ class TestCommand extends FlutterCommand with DeviceBasedDevelopmentArtifacts {
     // correct [requiredArtifacts] can be identified before [run] takes place.
     _isIntegrationTest = _shouldRunAsIntegrationTests(globals.fs.currentDirectory.absolute.path, _testFiles);
 
-    globals.logger.printTrace(
+    globals.printTrace(
       'Found ${_testFiles.length} files which will be executed as '
       '${_isIntegrationTest ? 'Integration' : 'Widget'} Tests.',
     );
@@ -315,7 +320,7 @@ class TestCommand extends FlutterCommand with DeviceBasedDevelopmentArtifacts {
       );
     }
 
-    if (buildTestAssets && flutterProject.manifest.assets.isNotEmpty) {
+    if (buildTestAssets) {
       await _buildTestAsset();
     }
 
@@ -335,7 +340,7 @@ class TestCommand extends FlutterCommand with DeviceBasedDevelopmentArtifacts {
     }
     if (_isIntegrationTest) {
       if (argResults.wasParsed('concurrency')) {
-        globals.logger.printStatus(
+        globals.printStatus(
           '-j/--concurrency was parsed but will be ignored, this option is not '
           'supported when running Integration Tests.',
         );
@@ -373,7 +378,6 @@ class TestCommand extends FlutterCommand with DeviceBasedDevelopmentArtifacts {
       collector = CoverageCollector(
         verbose: !machine,
         libraryPredicate: (String libraryName) => libraryName.contains(projectName),
-        // TODO(jonahwilliams): file bug for incorrect URI handling on windows
         packagesPath: globals.fs.file(buildInfo.packagesPath)
           .parent.parent.childFile('.packages').path
       );
@@ -392,7 +396,7 @@ class TestCommand extends FlutterCommand with DeviceBasedDevelopmentArtifacts {
       disableServiceAuthCodes: boolArg('disable-service-auth-codes'),
       // On iOS >=14, keeping this enabled will leave a prompt on the screen.
       disablePortPublication: true,
-      disableDds: disableDds,
+      enableDds: enableDds,
       nullAssertions: boolArg(FlutterOptions.kNullAssertions),
     );
 
@@ -411,7 +415,7 @@ class TestCommand extends FlutterCommand with DeviceBasedDevelopmentArtifacts {
         );
       }
       if (integrationTestDevice.platformType == PlatformType.web) {
-        // TODO(jiahaog): Support web. https://github.com/flutter/flutter/pull/74236
+        // TODO(jiahaog): Support web. https://github.com/flutter/flutter/issues/66264
         throwToolExit('Web devices are not supported for integration tests yet.');
       }
 

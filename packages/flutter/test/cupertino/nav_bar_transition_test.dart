@@ -3,6 +3,12 @@
 // found in the LICENSE file.
 
 @TestOn('!chrome')
+// TODO(gspencergoog): Remove this tag once this test's state leaks/test
+// dependencies have been fixed.
+// https://github.com/flutter/flutter/issues/85160
+// Fails with "flutter test --test-randomize-ordering-seed=456"
+@Tags(<String>['no-shuffle'])
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -111,7 +117,7 @@ void checkBackgroundBoxHeight(WidgetTester tester, double height) {
 
 void checkOpacity(WidgetTester tester, Finder finder, double opacity) {
   expect(
-    tester.renderObject<RenderAnimatedOpacity>(
+    tester.firstRenderObject<RenderAnimatedOpacity>(
       find.ancestor(
         of: finder,
         matching: find.byType(FadeTransition),
@@ -165,6 +171,27 @@ void main() {
     );
   });
 
+  testWidgets('Bottom middle never changes size during the animation', (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(1080.0 / 2.75, 600));
+    addTearDown(() async {
+      await tester.binding.setSurfaceSize(const Size(800.0, 600.0));
+    });
+
+    await startTransitionBetween(
+      tester,
+      fromTitle: 'Page 1',
+    );
+
+    final Size size = tester.getSize(find.text('Page 1'));
+
+    for (int i = 0; i < 150; i++) {
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(flying(tester, find.text('Page 1')), findsNWidgets(2));
+      expect(tester.getSize(flying(tester, find.text('Page 1')).first), size);
+      expect(tester.getSize(flying(tester, find.text('Page 1')).last), size);
+    }
+  });
+
   testWidgets('Bottom middle and top back label transitions their font', (WidgetTester tester) async {
     await startTransitionBetween(tester, fromTitle: 'Page 1');
 
@@ -179,8 +206,7 @@ void main() {
     expect(bottomMiddle.text.style!.fontFamily, '.SF Pro Text');
     expect(bottomMiddle.text.style!.letterSpacing, -0.41);
 
-    checkOpacity(
-        tester, flying(tester, find.text('Page 1')).first, 0.9004602432250977);
+    checkOpacity(tester, flying(tester, find.text('Page 1')).first, 0.9004602432250977);
 
     // The top back label is styled exactly the same way. But the opacity tweens
     // are flipped.
@@ -207,8 +233,7 @@ void main() {
     expect(topBackLabel.text.style!.fontFamily, '.SF Pro Text');
     expect(topBackLabel.text.style!.letterSpacing, -0.41);
 
-    checkOpacity(
-        tester, flying(tester, find.text('Page 1')).last, 0.7630139589309692);
+    checkOpacity(tester, flying(tester, find.text('Page 1')).last, 0.7630139589309692);
   });
 
   testWidgets('Font transitions respect themes', (WidgetTester tester) async {
@@ -589,8 +614,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    final Finder backChevron = flying(tester,
-        find.text(String.fromCharCode(CupertinoIcons.back.codePoint)));
+    final Finder backChevron = flying(tester, find.text(String.fromCharCode(CupertinoIcons.back.codePoint)));
 
     expect(
       backChevron,
@@ -599,13 +623,11 @@ void main() {
     );
     // Come in from the right and fade in.
     checkOpacity(tester, backChevron, 0.0);
-    expect(
-        tester.getTopLeft(backChevron), const Offset(86.734375, 7.0));
+    expect(tester.getTopLeft(backChevron), const Offset(86.734375, 7.0));
 
     await tester.pump(const Duration(milliseconds: 150));
     checkOpacity(tester, backChevron, 0.09497911669313908);
-    expect(
-        tester.getTopLeft(backChevron), const Offset(31.055883467197418, 7.0));
+    expect(tester.getTopLeft(backChevron), const Offset(31.055883467197418, 7.0));
   });
 
   testWidgets('First appearance of back chevron fades in from the left in RTL', (WidgetTester tester) async {
@@ -631,8 +653,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    final Finder backChevron = flying(tester,
-        find.text(String.fromCharCode(CupertinoIcons.back.codePoint)));
+    final Finder backChevron = flying(tester, find.text(String.fromCharCode(CupertinoIcons.back.codePoint)));
 
     expect(
       backChevron,
@@ -660,8 +681,7 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 50));
 
-    final Finder backChevrons = flying(tester,
-        find.text(String.fromCharCode(CupertinoIcons.back.codePoint)));
+    final Finder backChevrons = flying(tester, find.text(String.fromCharCode(CupertinoIcons.back.codePoint)));
 
     expect(
       backChevrons,
@@ -887,13 +907,11 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(
-        flying(tester, find.text('A title too long to fit')), findsOneWidget);
+    expect(flying(tester, find.text('A title too long to fit')), findsOneWidget);
     // Automatically changed to the word 'Back' in the back label.
     expect(flying(tester, find.text('Back')), findsOneWidget);
 
-    checkOpacity(tester, flying(tester, find.text('A title too long to fit')),
-        0.8833301812410355);
+    checkOpacity(tester, flying(tester, find.text('A title too long to fit')), 0.8833301812410355);
     checkOpacity(tester, flying(tester, find.text('Back')), 0.0);
     expect(
       tester.getTopLeft(flying(tester, find.text('A title too long to fit'))),
@@ -979,6 +997,29 @@ void main() {
       tester.getTopLeft(flying(tester, find.text('Page 2'))),
       const Offset(439.7678077220917, 13.5),
     );
+  });
+
+  testWidgets('Top middle never changes size during the animation', (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(1080.0 / 2.75, 600));
+    addTearDown(() async {
+      await tester.binding.setSurfaceSize(const Size(800.0, 600.0));
+    });
+
+    await startTransitionBetween(
+      tester,
+      toTitle: 'Page 2',
+    );
+
+    Size? previousSize;
+
+    for (int i = 0; i < 150; i++) {
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(flying(tester, find.text('Page 2')), findsOneWidget);
+      final Size size = tester.getSize(flying(tester, find.text('Page 2')));
+      if (previousSize != null)
+        expect(size, previousSize);
+      previousSize = size;
+    }
   });
 
   testWidgets('Top middle fades in and slides in from the left in RTL', (WidgetTester tester) async {

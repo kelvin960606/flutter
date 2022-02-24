@@ -30,7 +30,7 @@ import 'icon_theme_data.dart';
 /// sizes. The first [Icon] uses a [semanticLabel] to announce in accessibility
 /// modes like TalkBack and VoiceOver.
 ///
-/// ![A row of icons representing a pink heart, a green musical note, and a blue umbrella](https://flutter.github.io/assets-for-api-docs/assets/widgets/icon.png)
+/// ![The following code snippet would generate a row of icons consisting of a pink heart, a green musical note, and a blue umbrella, each progressively bigger than the last.](https://flutter.github.io/assets-for-api-docs/assets/widgets/icon.png)
 ///
 /// ```dart
 /// Row(
@@ -100,21 +100,22 @@ class Icon extends StatelessWidget {
   ///
   /// Defaults to the current [IconTheme] color, if any.
   ///
-  /// The given color will be adjusted by the opacity of the current
+  /// The color (whether specified explicitly here or obtained from the
+  /// [IconTheme]) will be further adjusted by the opacity of the current
   /// [IconTheme], if any.
-  ///
   ///
   /// In material apps, if there is a [Theme] without any [IconTheme]s
   /// specified, icon colors default to white if the theme is dark
   /// and black if the theme is light.
   ///
-  /// If no [IconTheme] and no [Theme] is specified, icons will default to black.
+  /// If no [IconTheme] and no [Theme] is specified, icons will default to
+  /// black.
   ///
   /// See [Theme] to set the current theme and [ThemeData.brightness]
   /// for setting the current theme's brightness.
   ///
   /// {@tool snippet}
-  /// Typically, a material design color will be used, as follows:
+  /// Typically, a Material Design color will be used, as follows:
   ///
   /// ```dart
   /// Icon(

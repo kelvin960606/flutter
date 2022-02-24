@@ -13,7 +13,6 @@ import 'box.dart';
 import 'layer.dart';
 import 'object.dart';
 
-
 /// How an embedded platform view behave during hit tests.
 enum PlatformViewHitTestBehavior {
   /// Opaque targets can be hit by hit tests, causing them to both receive
@@ -75,7 +74,6 @@ Set<Type> _factoriesTypeSet<T>(Set<Factory<T>> factories) {
 ///  * [AndroidView] which is a widget that is used to show an Android view.
 ///  * [PlatformViewsService] which is a service for controlling platform views.
 class RenderAndroidView extends RenderBox with _PlatformViewGestureMixin {
-
   /// Creates a render object for an Android view.
   RenderAndroidView({
     required AndroidViewController viewController,
@@ -97,7 +95,7 @@ class RenderAndroidView extends RenderBox with _PlatformViewGestureMixin {
   _PlatformViewState _state = _PlatformViewState.uninitialized;
 
   /// The Android view controller for the Android view associated with this render object.
-  AndroidViewController get viewcontroller => _viewController;
+  AndroidViewController get viewController => _viewController;
   AndroidViewController _viewController;
   /// Sets a new Android view controller.
   ///
@@ -209,21 +207,27 @@ class RenderAndroidView extends RenderBox with _PlatformViewGestureMixin {
     // Clip the texture if it's going to paint out of the bounds of the renter box
     // (see comment in _paintTexture for an explanation of when this happens).
     if ((size.width < _currentAndroidViewSize.width || size.height < _currentAndroidViewSize.height) && clipBehavior != Clip.none) {
-      _clipRectLayer = context.pushClipRect(
+      _clipRectLayer.layer = context.pushClipRect(
         true,
         offset,
         offset & size,
         _paintTexture,
         clipBehavior: clipBehavior,
-        oldLayer: _clipRectLayer,
+        oldLayer: _clipRectLayer.layer,
       );
       return;
     }
-    _clipRectLayer = null;
+    _clipRectLayer.layer = null;
     _paintTexture(context, offset);
   }
 
-  ClipRectLayer? _clipRectLayer;
+  final LayerHandle<ClipRectLayer> _clipRectLayer = LayerHandle<ClipRectLayer>();
+
+  @override
+  void dispose() {
+    _clipRectLayer.layer = null;
+    super.dispose();
+  }
 
   void _paintTexture(PaintingContext context, Offset offset) {
     // As resizing the Android view happens asynchronously we don't know exactly when is a
@@ -414,7 +418,7 @@ class RenderUiKitView extends RenderBox {
 }
 
 // This recognizer constructs gesture recognizers from a set of gesture recognizer factories
-// it was give, adds all of them to a gesture arena team with the _UiKitViewGesturrRecognizer
+// it was give, adds all of them to a gesture arena team with the _UiKitViewGestureRecognizer
 // as the team captain.
 // When the team wins a gesture the recognizer notifies the engine that it should release
 // the touch sequence to the embedded UIView.
@@ -422,8 +426,8 @@ class _UiKitViewGestureRecognizer extends OneSequenceGestureRecognizer {
   _UiKitViewGestureRecognizer(
     this.controller,
     this.gestureRecognizerFactories, {
-    PointerDeviceKind? kind,
-  }) : super(kind: kind) {
+    Set<PointerDeviceKind>? supportedDevices,
+  }) : super(supportedDevices: supportedDevices) {
     team = GestureArenaTeam()
       ..captain = this;
     _gestureRecognizers = gestureRecognizerFactories.map(
@@ -445,7 +449,6 @@ class _UiKitViewGestureRecognizer extends OneSequenceGestureRecognizer {
     ).toSet();
   }
 
-
   // We use OneSequenceGestureRecognizers as they support gesture arena teams.
   // TODO(amirh): get a list of GestureRecognizers here.
   // https://github.com/flutter/flutter/issues/20953
@@ -456,7 +459,7 @@ class _UiKitViewGestureRecognizer extends OneSequenceGestureRecognizer {
 
   @override
   void addAllowedPointer(PointerDownEvent event) {
-    startTrackingPointer(event.pointer, event.transform);
+    super.addAllowedPointer(event);
     for (final OneSequenceGestureRecognizer recognizer in _gestureRecognizers) {
       recognizer.addPointer(event);
     }
@@ -500,8 +503,8 @@ class _PlatformViewGestureRecognizer extends OneSequenceGestureRecognizer {
   _PlatformViewGestureRecognizer(
     _HandlePointerEvent handlePointerEvent,
     this.gestureRecognizerFactories, {
-    PointerDeviceKind? kind,
-  }) : super(kind: kind) {
+    Set<PointerDeviceKind>? supportedDevices,
+  }) : super(supportedDevices: supportedDevices) {
     team = GestureArenaTeam()
       ..captain = this;
     _gestureRecognizers = gestureRecognizerFactories.map(
@@ -544,7 +547,7 @@ class _PlatformViewGestureRecognizer extends OneSequenceGestureRecognizer {
 
   @override
   void addAllowedPointer(PointerDownEvent event) {
-    startTrackingPointer(event.pointer, event.transform);
+    super.addAllowedPointer(event);
     for (final OneSequenceGestureRecognizer recognizer in _gestureRecognizers) {
       recognizer.addPointer(event);
     }
@@ -609,7 +612,6 @@ class _PlatformViewGestureRecognizer extends OneSequenceGestureRecognizer {
 /// [PlatformViewRenderBox] presents a platform view by adding a [PlatformViewLayer] layer,
 /// integrates it with the gesture arenas system and adds relevant semantic nodes to the semantics tree.
 class PlatformViewRenderBox extends RenderBox with _PlatformViewGestureMixin {
-
   /// Creating a render object for a [PlatformViewSurface].
   ///
   /// The `controller` parameter must not be null.
@@ -625,8 +627,9 @@ class PlatformViewRenderBox extends RenderBox with _PlatformViewGestureMixin {
     updateGestureRecognizers(gestureRecognizers);
   }
 
-  /// Sets the [controller] for this render object.
-  ///
+  /// The controller for this render object.
+  PlatformViewController get controller => _controller;
+  PlatformViewController _controller;
   /// This value must not be null, and setting it to a new value will result in a repaint.
   set controller(PlatformViewController controller) {
     assert(controller != null);
@@ -650,8 +653,6 @@ class PlatformViewRenderBox extends RenderBox with _PlatformViewGestureMixin {
   void updateGestureRecognizers(Set<Factory<OneSequenceGestureRecognizer>> gestureRecognizers) {
     _updateGestureRecognizersWithCallBack(gestureRecognizers, _controller.dispatchPointerEvent);
   }
-
-  PlatformViewController _controller;
 
   @override
   bool get sizedByParent => true;

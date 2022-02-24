@@ -12,8 +12,6 @@ import 'package:flutter_tools/src/base/logger.dart';
 import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/build_info.dart';
 import 'package:flutter_tools/src/build_system/build_system.dart';
-import 'package:flutter_tools/src/build_system/targets/assets.dart';
-import 'package:flutter_tools/src/build_system/targets/common.dart';
 import 'package:flutter_tools/src/build_system/targets/ios.dart';
 import 'package:flutter_tools/src/convert.dart';
 
@@ -25,7 +23,7 @@ final Platform macPlatform = FakePlatform(operatingSystem: 'macos', environment:
 const List<String> _kSharedConfig = <String>[
   '-dynamiclib',
   '-fembed-bitcode-marker',
-  '-miphoneos-version-min=8.0',
+  '-miphoneos-version-min=9.0',
   '-Xlinker',
   '-rpath',
   '-Xlinker',
@@ -37,7 +35,7 @@ const List<String> _kSharedConfig = <String>[
   '-install_name',
   '@rpath/App.framework/App',
   '-isysroot',
-  'path/to/sdk',
+  'path/to/iPhoneOS.sdk',
 ];
 
 void main() {
@@ -49,7 +47,7 @@ void main() {
 
   setUp(() {
     fileSystem = MemoryFileSystem.test();
-    processManager = FakeProcessManager.list(<FakeCommand>[]);
+    processManager = FakeProcessManager.empty();
     logger = BufferLogger.test();
     artifacts = Artifacts.test();
     environment = Environment.test(
@@ -66,15 +64,66 @@ void main() {
     );
   });
 
-  testWithoutContext('iOS AOT targets has analyicsName', () {
+  testWithoutContext('iOS AOT targets has analyticsName', () {
     expect(const AotAssemblyRelease().analyticsName, 'ios_aot');
     expect(const AotAssemblyProfile().analyticsName, 'ios_aot');
   });
 
-  testUsingContext('DebugUniveralFramework creates expected binary with arm64 only arch', () async {
+  testUsingContext('DebugUniversalFramework creates simulator binary', () async {
+    environment.defines[kIosArchs] = 'x86_64';
+    environment.defines[kSdkRoot] = 'path/to/iPhoneSimulator.sdk';
+    final String appFrameworkPath = environment.buildDir.childDirectory('App.framework').childFile('App').path;
+    processManager.addCommands(<FakeCommand>[
+      FakeCommand(command: <String>[
+        'xcrun',
+        'clang',
+        '-x',
+        'c',
+        '-arch',
+        'x86_64',
+        fileSystem.path.absolute(fileSystem.path.join(
+            '.tmp_rand0', 'flutter_tools_stub_source.rand0', 'debug_app.cc')),
+        '-dynamiclib',
+        '-fembed-bitcode-marker',
+        '-miphonesimulator-version-min=9.0',
+        '-Xlinker',
+        '-rpath',
+        '-Xlinker',
+        '@executable_path/Frameworks',
+        '-Xlinker',
+        '-rpath',
+        '-Xlinker',
+        '@loader_path/Frameworks',
+        '-install_name',
+        '@rpath/App.framework/App',
+        '-isysroot',
+        'path/to/iPhoneSimulator.sdk',
+        '-o',
+        appFrameworkPath,
+      ]),
+      FakeCommand(command: <String>[
+        'codesign',
+        '--force',
+        '--sign',
+        '-',
+        '--timestamp=none',
+        appFrameworkPath,
+      ]),
+    ]);
+
+    await const DebugUniversalFramework().build(environment);
+    expect(processManager.hasRemainingExpectations, isFalse);
+  }, overrides: <Type, Generator>{
+    FileSystem: () => fileSystem,
+    ProcessManager: () => processManager,
+    Platform: () => macPlatform,
+  });
+
+  testUsingContext('DebugUniversalFramework creates expected binary with arm64 only arch', () async {
     environment.defines[kIosArchs] = 'arm64';
-    environment.defines[kSdkRoot] = 'path/to/sdk';
-    processManager.addCommand(
+    environment.defines[kSdkRoot] = 'path/to/iPhoneOS.sdk';
+    final String appFrameworkPath = environment.buildDir.childDirectory('App.framework').childFile('App').path;
+    processManager.addCommands(<FakeCommand>[
       FakeCommand(command: <String>[
         'xcrun',
         'clang',
@@ -87,12 +136,17 @@ void main() {
             '.tmp_rand0', 'flutter_tools_stub_source.rand0', 'debug_app.cc')),
         ..._kSharedConfig,
         '-o',
-        environment.buildDir
-            .childDirectory('App.framework')
-            .childFile('App')
-            .path,
+        appFrameworkPath,
       ]),
-    );
+      FakeCommand(command: <String>[
+        'codesign',
+        '--force',
+        '--sign',
+        '-',
+        '--timestamp=none',
+        appFrameworkPath,
+      ]),
+    ]);
 
     await const DebugUniversalFramework().build(environment);
     expect(processManager.hasRemainingExpectations, isFalse);
@@ -103,7 +157,7 @@ void main() {
   });
 
   testUsingContext('DebugIosApplicationBundle', () async {
-    environment.inputs[kBundleSkSLPath] = 'bundle.sksl';
+    environment.defines[kBundleSkSLPath] = 'bundle.sksl';
     environment.defines[kBuildMode] = 'debug';
     environment.defines[kCodesignIdentity] = 'ABC123';
     // Precompiled dart data
@@ -227,7 +281,7 @@ void main() {
       fileSystem: fileSystem,
     );
 
-    expect(const AotAssemblyRelease().build(environment), throwsA(isA<Exception>()
+    expect(const AotAssemblyRelease().build(environment), throwsA(isException
       .having(
         (Exception exception) => exception.toString(),
         'description',
@@ -256,13 +310,11 @@ void main() {
     environment.defines[kBuildMode] = 'release';
     environment.defines[kIosArchs] = 'x86_64';
 
-    expect(const AotAssemblyRelease().build(environment), throwsA(isA<Exception>()
-        .having(
-          (Exception exception) => exception.toString(),
+    expect(const AotAssemblyRelease().build(environment), throwsA(isException.having(
+      (Exception exception) => exception.toString(),
       'description',
       contains('required define SdkRoot but it was not provided'),
-    )
-    ));
+    )));
     expect(processManager.hasRemainingExpectations, isFalse);
   }, overrides: <Type, Generator>{
     FileSystem: () => fileSystem,
@@ -277,6 +329,7 @@ void main() {
     FakeCommand lipoCommandNonFatResult;
     FakeCommand lipoVerifyArm64Command;
     FakeCommand bitcodeStripCommand;
+    FakeCommand adHocCodesignCommand;
 
     setUp(() {
       final FileSystem fileSystem = MemoryFileSystem.test();
@@ -311,6 +364,15 @@ void main() {
         binary.path,
         '-m',
         '-o',
+        binary.path,
+      ]);
+
+      adHocCodesignCommand = FakeCommand(command: <String>[
+        'codesign',
+        '--force',
+        '--sign',
+        '-',
+        '--timestamp=none',
         binary.path,
       ]);
     });
@@ -349,6 +411,7 @@ void main() {
           '-verify_arch',
           'x86_64',
         ]),
+        adHocCodesignCommand,
       ]);
       await const DebugUnpackIOS().build(environment);
 
@@ -373,7 +436,7 @@ void main() {
       processManager.addCommand(copyPhysicalFrameworkCommand);
       await expectLater(
         const DebugUnpackIOS().build(environment),
-        throwsA(isA<Exception>().having(
+        throwsA(isException.having(
           (Exception exception) => exception.toString(),
           'description',
           contains('Flutter.framework/Flutter does not exist, cannot thin'),
@@ -414,12 +477,13 @@ void main() {
       ]);
 
       await expectLater(
-          const DebugUnpackIOS().build(environment),
-          throwsA(isA<Exception>().having(
-                (Exception exception) => exception.toString(),
-            'description',
-            contains('does not contain arm64 armv7. Running lipo -info:\nArchitectures in the fat file:'),
-          )));
+        const DebugUnpackIOS().build(environment),
+        throwsA(isException.having(
+          (Exception exception) => exception.toString(),
+          'description',
+          contains('does not contain arm64 armv7. Running lipo -info:\nArchitectures in the fat file:'),
+        )),
+      );
     });
 
     testWithoutContext('fails when lipo extract fails', () async {
@@ -468,11 +532,12 @@ void main() {
 
       await expectLater(
         const DebugUnpackIOS().build(environment),
-        throwsA(isA<Exception>().having(
-              (Exception exception) => exception.toString(),
+        throwsA(isException.having(
+          (Exception exception) => exception.toString(),
           'description',
           contains('Failed to extract arm64 armv7 for output/Flutter.framework/Flutter.\nlipo error\nRunning lipo -info:\nArchitectures in the fat file:'),
-        )));
+        )),
+      );
     });
 
     testWithoutContext('skips thin framework', () async {
@@ -496,6 +561,7 @@ void main() {
         copyPhysicalFrameworkCommand,
         lipoCommandNonFatResult,
         lipoVerifyArm64Command,
+        adHocCodesignCommand,
       ]);
       await const DebugUnpackIOS().build(environment);
 
@@ -545,6 +611,7 @@ void main() {
           'armv7',
           binary.path,
         ]),
+        adHocCodesignCommand,
       ]);
 
       await const DebugUnpackIOS().build(environment);
@@ -583,12 +650,13 @@ void main() {
       ]);
 
       await expectLater(
-          const DebugUnpackIOS().build(environment),
-          throwsA(isA<Exception>().having(
-                (Exception exception) => exception.toString(),
-            'description',
-            contains('Failed to strip bitcode for output/Flutter.framework/Flutter.\nbitcode_strip error'),
-          )));
+        const DebugUnpackIOS().build(environment),
+        throwsA(isException.having(
+          (Exception exception) => exception.toString(),
+          'description',
+          contains('Failed to strip bitcode for output/Flutter.framework/Flutter.\nbitcode_strip error'),
+        )),
+      );
 
       expect(processManager.hasRemainingExpectations, isFalse);
     });
@@ -615,6 +683,7 @@ void main() {
         lipoCommandNonFatResult,
         lipoVerifyArm64Command,
         bitcodeStripCommand,
+        adHocCodesignCommand,
       ]);
       await const DebugUnpackIOS().build(environment);
 
@@ -655,12 +724,13 @@ void main() {
       ]);
 
       await expectLater(
-          const DebugUnpackIOS().build(environment),
-          throwsA(isA<Exception>().having(
-                (Exception exception) => exception.toString(),
-            'description',
-            contains('Failed to codesign output/Flutter.framework/Flutter with identity ABC123.\ncodesign error'),
-          )));
+        const DebugUnpackIOS().build(environment),
+        throwsA(isException.having(
+          (Exception exception) => exception.toString(),
+          'description',
+          contains('Failed to codesign output/Flutter.framework/Flutter with identity ABC123.\ncodesign error'),
+        )),
+      );
 
       expect(processManager.hasRemainingExpectations, isFalse);
     });

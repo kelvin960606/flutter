@@ -4,8 +4,8 @@
 
 import 'package:flutter/material.dart';
 
-import 'package:flutter_gallery/demo/shrine/model/product.dart';
-import 'package:flutter_gallery/demo/shrine/supplemental/product_columns.dart';
+import '../model/product.dart';
+import 'product_columns.dart';
 
 class AsymmetricView extends StatelessWidget {
   const AsymmetricView({Key? key, this.products}) : super(key: key);
@@ -78,8 +78,8 @@ class AsymmetricView extends StatelessWidget {
     return ListView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(0.0, 34.0, 16.0, 44.0),
-      children: _buildColumns(context),
       physics: const AlwaysScrollableScrollPhysics(),
+      children: _buildColumns(context),
     );
   }
 }

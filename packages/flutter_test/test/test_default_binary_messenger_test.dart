@@ -7,12 +7,16 @@ import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+class RecognizableTestException implements Exception {
+  const RecognizableTestException();
+}
+
 class TestDelegate extends BinaryMessenger {
   @override
   Future<ByteData?>? send(String channel, ByteData? message) async {
     expect(channel, '');
     expect(message, isNull);
-    throw 'Vic Fontaine';
+    throw const RecognizableTestException();
   }
 
   // Rest of the API isn't needed for this test.
@@ -20,12 +24,6 @@ class TestDelegate extends BinaryMessenger {
   Future<void> handlePlatformMessage(String channel, ByteData? data, ui.PlatformMessageResponseCallback? callback) => throw UnimplementedError();
   @override
   void setMessageHandler(String channel, MessageHandler? handler) => throw UnimplementedError();
-  @override
-  bool checkMessageHandler(String channel, MessageHandler? handler) => throw UnimplementedError();
-  @override
-  void setMockMessageHandler(String channel, MessageHandler? handler) => throw UnimplementedError();
-  @override
-  bool checkMockMessageHandler(String channel, MessageHandler? handler) => throw UnimplementedError();
 }
 
 void main() {
@@ -38,7 +36,7 @@ void main() {
       await TestDefaultBinaryMessenger(delegate).send('', null);
       expect(true, isFalse); // should not reach here
     } catch (error) {
-      expect(error, 'Vic Fontaine');
+      expect(error, const RecognizableTestException());
     }
   });
 }

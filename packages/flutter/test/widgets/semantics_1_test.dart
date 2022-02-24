@@ -19,8 +19,8 @@ void main() {
         child: Semantics(
           label: 'test1',
           textDirection: TextDirection.ltr,
-          child: Container(),
           selected: true,
+          child: Container(),
         ),
       ),
     );
@@ -54,7 +54,6 @@ void main() {
             SizedBox(
               height: 10.0,
               child: IgnorePointer(
-                ignoring: true,
                 child: Semantics(
                   label: 'child1',
                   textDirection: TextDirection.ltr,
@@ -150,7 +149,6 @@ void main() {
             SizedBox(
               height: 10.0,
               child: IgnorePointer(
-                ignoring: true,
                 child: Semantics(
                   label: 'child2',
                   textDirection: TextDirection.ltr,

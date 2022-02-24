@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/widgets.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   const Offset forcePressOffset = Offset(400.0, 50.0);
@@ -515,10 +515,8 @@ void main() {
 
     await gesture.updateWithCustomEvent(PointerMoveEvent(
       pointer: pointerValue,
-      position: Offset.zero,
       pressure: 0.3,
       pressureMin: 0,
-      pressureMax: 1,
     ));
 
     expect(forcePressStart, 0);
@@ -528,10 +526,8 @@ void main() {
 
     await gesture.updateWithCustomEvent(PointerMoveEvent(
       pointer: pointerValue,
-      position: Offset.zero,
       pressure: 0.5,
       pressureMin: 0,
-      pressureMax: 1
     ));
 
     expect(forcePressStart, 1);
@@ -541,31 +537,23 @@ void main() {
 
     await gesture.updateWithCustomEvent(PointerMoveEvent(
       pointer: pointerValue,
-      position: Offset.zero,
       pressure: 0.6,
       pressureMin: 0,
-      pressureMax: 1,
     ));
     await gesture.updateWithCustomEvent(PointerMoveEvent(
       pointer: pointerValue,
-      position: Offset.zero,
       pressure: 0.7,
       pressureMin: 0,
-      pressureMax: 1
     ));
     await gesture.updateWithCustomEvent(PointerMoveEvent(
       pointer: pointerValue,
-      position: Offset.zero,
       pressure: 0.2,
       pressureMin: 0,
-      pressureMax: 1
     ));
     await gesture.updateWithCustomEvent(PointerMoveEvent(
       pointer: pointerValue,
-      position: Offset.zero,
       pressure: 0.3,
       pressureMin: 0,
-      pressureMax: 1
     ));
 
     expect(forcePressStart, 1);
@@ -575,10 +563,8 @@ void main() {
 
     await gesture.updateWithCustomEvent(PointerMoveEvent(
       pointer: pointerValue,
-      position: Offset.zero,
       pressure: 0.9,
       pressureMin: 0,
-      pressureMax: 1,
     ));
 
     expect(forcePressStart, 1);
@@ -634,7 +620,7 @@ void main() {
       position: const Offset(400.0, 50.0),
       pressure: 0.3,
       pressureMin: 0,
-      pressureMax: maxPressure
+      pressureMax: maxPressure,
     ));
 
     expect(forcePressStart, 0);
@@ -652,7 +638,7 @@ void main() {
       position: const Offset(400.0, 50.0),
       pressure: 0.5,
       pressureMin: 0,
-      pressureMax: maxPressure
+      pressureMax: maxPressure,
     ));
 
     expect(longPressTimes, 1);
@@ -695,10 +681,8 @@ void main() {
 
     await gesture.updateWithCustomEvent(PointerMoveEvent(
       pointer: pointerValue,
-      position: Offset.zero,
       pressure: 0.3,
       pressureMin: 0,
-      pressureMax: 1
     ));
 
     expect(forcePressStart, 0);
@@ -713,10 +697,8 @@ void main() {
     // Failed attempt to trigger the force press.
     await gesture.updateWithCustomEvent(PointerMoveEvent(
       pointer: pointerValue,
-      position: Offset.zero,
       pressure: 0.5,
       pressureMin: 0,
-      pressureMax: 1,
     ));
 
     expect(horizontalDragStart, 1);
@@ -762,8 +744,8 @@ void main() {
             },
           ),
         },
-        child: Container(),
         semantics: _EmptySemanticsGestureDelegate(),
+        child: Container(),
       ));
       key.currentState!.debugFillProperties(builder);
 
@@ -784,10 +766,9 @@ void main() {
       final GlobalKey key = GlobalKey();
       await tester.pumpWidget(RawGestureDetector(
         key: key,
-        gestures: const <Type, GestureRecognizerFactory>{},
-        child: Container(),
         semantics: _EmptySemanticsGestureDelegate(),
         excludeFromSemantics: true,
+        child: Container(),
       ));
       key.currentState!.debugFillProperties(builder);
 
@@ -823,7 +804,7 @@ void main() {
             error.diagnostics.last.toStringDeep(),
             equalsIgnoringHashCodes(
               'Just use the scale gesture recognizer.\n',
-            )
+            ),
           );
         }
       });
@@ -864,8 +845,7 @@ void main() {
         );
         late FlutterError error;
         try {
-          key.currentState!.replaceGestureRecognizers(
-            <Type, GestureRecognizerFactory>{});
+          key.currentState!.replaceGestureRecognizers(<Type, GestureRecognizerFactory>{});
         } on FlutterError catch (e) {
           error = e;
         } finally {
@@ -876,7 +856,7 @@ void main() {
               'To set the gesture recognizers at other times, trigger a new\n'
               'build using setState() and provide the new gesture recognizers as\n'
               'constructor arguments to the corresponding RawGestureDetector or\n'
-              'GestureDetector object.\n'
+              'GestureDetector object.\n',
             ),
           );
           expect(

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -11,7 +11,7 @@ class CountButton extends StatefulWidget {
   const CountButton({Key? key}) : super(key: key);
 
   @override
-  _CountButtonState createState() => _CountButtonState();
+  State<CountButton> createState() => _CountButtonState();
 }
 
 class _CountButtonState extends State<CountButton> {
@@ -33,7 +33,7 @@ class AnimateSample extends StatefulWidget {
   const AnimateSample({Key? key}) : super(key: key);
 
   @override
-  _AnimateSampleState createState() => _AnimateSampleState();
+  State<AnimateSample> createState() => _AnimateSampleState();
 }
 
 class _AnimateSampleState extends State<AnimateSample>
@@ -111,11 +111,9 @@ void main() {
         // Typically PointerAddedEvent is not used in testers, but for records
         // captured on a device it is usually what start a gesture.
         PointerAddedEvent(
-          timeStamp: Duration.zero,
           position: location,
         ),
         PointerDownEvent(
-          timeStamp: Duration.zero,
           position: location,
           buttons: kSecondaryMouseButton,
           pointer: 1,
@@ -123,8 +121,8 @@ void main() {
       ]),
       ...<PointerEventRecord>[
         for (Duration t = const Duration(milliseconds: 5);
-            t < const Duration(milliseconds: 80);
-            t += const Duration(milliseconds: 16))
+             t < const Duration(milliseconds: 80);
+             t += const Duration(milliseconds: 16))
           PointerEventRecord(t, <PointerEvent>[
             PointerMoveEvent(
               timeStamp: t - const Duration(milliseconds: 1),
@@ -149,7 +147,7 @@ void main() {
     expect(timeDiffs.length, records.length);
     for (final Duration diff in timeDiffs) {
       // Allow some freedom of time delay in real world.
-      assert(diff.inMilliseconds > -1);
+      assert(diff.inMilliseconds > -1, 'timeDiffs were: $timeDiffs (offending time was ${diff.inMilliseconds}ms)');
     }
 
     const String b = '$kSecondaryMouseButton';

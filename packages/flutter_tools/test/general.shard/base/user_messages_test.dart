@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/base/user_messages.dart';
 
@@ -13,7 +11,7 @@ typedef _InstallationMessage = String Function(Platform);
 
 void main() {
   final FakePlatform macPlatform = FakePlatform(operatingSystem: 'macos');
-  final FakePlatform linuxPlatform = FakePlatform(operatingSystem: 'linux');
+  final FakePlatform linuxPlatform = FakePlatform();
   final FakePlatform windowsPlatform = FakePlatform(operatingSystem: 'windows');
 
   void _checkInstallationURL(_InstallationMessage message) {
@@ -29,7 +27,7 @@ void main() {
     _checkInstallationURL((Platform platform) => userMessages.androidSdkInstallHelp(platform));
     _checkInstallationURL((Platform platform) => userMessages.androidMissingSdkManager('/', platform));
     _checkInstallationURL((Platform platform) => userMessages.androidCannotRunSdkManager('/', '', platform));
-    _checkInstallationURL((Platform platform) => userMessages.androidSdkBuildToolsOutdated('/', 0, '', platform));
+    _checkInstallationURL((Platform platform) => userMessages.androidSdkBuildToolsOutdated(0, '', platform));
     _checkInstallationURL((Platform platform) => userMessages.androidStudioInstallation(platform));
   });
 }

@@ -2,44 +2,34 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:file/file.dart';
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/artifacts.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
 import 'package:flutter_tools/src/base/logger.dart';
-import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/base/process.dart';
+import 'package:flutter_tools/src/build_info.dart';
 import 'package:flutter_tools/src/cache.dart';
-import 'package:flutter_tools/src/ios/devices.dart';
+import 'package:flutter_tools/src/ios/iproxy.dart';
 import 'package:flutter_tools/src/ios/mac.dart';
 import 'package:flutter_tools/src/project.dart';
 import 'package:flutter_tools/src/reporting/reporting.dart';
-import 'package:mockito/mockito.dart';
+import 'package:test/fake.dart';
 
 import '../../src/common.dart';
-import '../../src/context.dart';
 import '../../src/fake_process_manager.dart';
 import '../../src/fakes.dart';
 
-FakePlatform _kNoColorTerminalPlatform() => FakePlatform(stdoutSupportsAnsi: false);
-final Map<Type, Generator> noColorTerminalOverride = <Type, Generator>{
-  Platform: _kNoColorTerminalPlatform,
-};
-
-class MockIosProject extends Mock implements IosProject {}
-
 void main() {
-  BufferLogger logger;
+  late BufferLogger logger;
 
   setUp(() {
     logger = BufferLogger.test();
   });
 
   group('IMobileDevice', () {
-    Artifacts artifacts;
-    Cache cache;
+    late Artifacts artifacts;
+    late Cache cache;
 
     setUp(() {
       artifacts = Artifacts.test();
@@ -52,11 +42,11 @@ void main() {
     });
 
     group('screenshot', () {
-      FakeProcessManager fakeProcessManager;
-      File outputFile;
+      late FakeProcessManager fakeProcessManager;
+      late File outputFile;
 
       setUp(() {
-        fakeProcessManager = FakeProcessManager.list(<FakeCommand>[]);
+        fakeProcessManager = FakeProcessManager.empty();
         outputFile = MemoryFileSystem.test().file('image.png');
       });
 
@@ -64,7 +54,7 @@ void main() {
         // Let `idevicescreenshot` fail with exit code 1.
         fakeProcessManager.addCommand(FakeCommand(
           command: <String>[
-            'Artifact.idevicescreenshot.TargetPlatform.ios',
+            'HostArtifact.idevicescreenshot',
             outputFile.path,
             '--udid',
             '1234',
@@ -85,7 +75,7 @@ void main() {
         expect(() async => iMobileDevice.takeScreenshot(
           outputFile,
           '1234',
-          IOSDeviceInterface.usb,
+          IOSDeviceConnectionInterface.usb,
         ), throwsA(anything));
         expect(fakeProcessManager.hasRemainingExpectations, isFalse);
       });
@@ -93,7 +83,7 @@ void main() {
       testWithoutContext('idevicescreenshot captures and returns USB screenshot', () async {
         fakeProcessManager.addCommand(FakeCommand(
           command: <String>[
-            'Artifact.idevicescreenshot.TargetPlatform.ios', outputFile.path, '--udid', '1234',
+            'HostArtifact.idevicescreenshot', outputFile.path, '--udid', '1234',
           ],
           environment: const <String, String>{'DYLD_LIBRARY_PATH': '/path/to/libraries'},
         ));
@@ -108,7 +98,7 @@ void main() {
         await iMobileDevice.takeScreenshot(
           outputFile,
           '1234',
-          IOSDeviceInterface.usb,
+          IOSDeviceConnectionInterface.usb,
         );
         expect(fakeProcessManager.hasRemainingExpectations, isFalse);
       });
@@ -116,7 +106,7 @@ void main() {
       testWithoutContext('idevicescreenshot captures and returns network screenshot', () async {
         fakeProcessManager.addCommand(FakeCommand(
           command: <String>[
-            'Artifact.idevicescreenshot.TargetPlatform.ios', outputFile.path, '--udid', '1234', '--network',
+            'HostArtifact.idevicescreenshot', outputFile.path, '--udid', '1234', '--network',
           ],
           environment: const <String, String>{'DYLD_LIBRARY_PATH': '/path/to/libraries'},
         ));
@@ -131,7 +121,7 @@ void main() {
         await iMobileDevice.takeScreenshot(
           outputFile,
           '1234',
-          IOSDeviceInterface.network,
+          IOSDeviceConnectionInterface.network,
         );
         expect(fakeProcessManager.hasRemainingExpectations, isFalse);
       });
@@ -139,8 +129,8 @@ void main() {
   });
 
   group('Diagnose Xcode build failure', () {
-    Map<String, String> buildSettings;
-    TestUsage testUsage;
+    late Map<String, String> buildSettings;
+    late TestUsage testUsage;
 
     setUp(() {
       buildSettings = <String, String>{
@@ -149,7 +139,7 @@ void main() {
       testUsage = TestUsage();
     });
 
-    testUsingContext('Sends analytics when bitcode fails', () async {
+    testWithoutContext('Sends analytics when bitcode fails', () async {
       const List<String> buildCommands = <String>['xcrun', 'cc', 'blah'];
       final XcodeBuildResult buildResult = XcodeBuildResult(
         success: false,
@@ -157,7 +147,7 @@ void main() {
         xcodeBuildExecution: XcodeBuildExecution(
           buildCommands: buildCommands,
           appDirectory: '/blah/blah',
-          buildForPhysicalDevice: true,
+          environmentType: EnvironmentType.physical,
           buildSettings: buildSettings,
         ),
       );
@@ -166,17 +156,17 @@ void main() {
       expect(testUsage.events, contains(
         TestUsageEvent(
           'build',
-          'unspecified',
+          'ios',
           label: 'xcode-bitcode-failure',
-          parameters: <String, String>{
-            cdKey(CustomDimensions.buildEventCommand): buildCommands.toString(),
-            cdKey(CustomDimensions.buildEventSettings): buildSettings.toString(),
-          },
+          parameters: CustomDimensions(
+            buildEventCommand: buildCommands.toString(),
+            buildEventSettings: buildSettings.toString(),
+          ),
         ),
       ));
     });
 
-    testUsingContext('No provisioning profile shows message', () async {
+    testWithoutContext('No provisioning profile shows message', () async {
       final XcodeBuildResult buildResult = XcodeBuildResult(
         success: false,
         stdout: '''
@@ -237,7 +227,7 @@ Error launching application on iPhone.''',
         xcodeBuildExecution: XcodeBuildExecution(
           buildCommands: <String>['xcrun', 'xcodebuild', 'blah'],
           appDirectory: '/blah/blah',
-          buildForPhysicalDevice: true,
+          environmentType: EnvironmentType.physical,
           buildSettings: buildSettings,
         ),
       );
@@ -247,9 +237,9 @@ Error launching application on iPhone.''',
         logger.errorText,
         contains("No Provisioning Profile was found for your project's Bundle Identifier or your \ndevice."),
       );
-    }, overrides: noColorTerminalOverride);
+    });
 
-    testUsingContext('No development team shows message', () async {
+    testWithoutContext('No development team shows message', () async {
       final XcodeBuildResult buildResult = XcodeBuildResult(
         success: false,
         stdout: '''
@@ -318,7 +308,7 @@ Could not build the precompiled application for the device.''',
         xcodeBuildExecution: XcodeBuildExecution(
           buildCommands: <String>['xcrun', 'xcodebuild', 'blah'],
           appDirectory: '/blah/blah',
-          buildForPhysicalDevice: true,
+          environmentType: EnvironmentType.physical,
           buildSettings: buildSettings,
         ),
       );
@@ -328,9 +318,9 @@ Could not build the precompiled application for the device.''',
         logger.errorText,
         contains('Building a deployable iOS app requires a selected Development Team with a \nProvisioning Profile.'),
       );
-    }, overrides: noColorTerminalOverride);
+    });
 
-    testUsingContext('embedded and linked framework iOS mismatch shows message', () async {
+    testWithoutContext('embedded and linked framework iOS mismatch shows message', () async {
       final XcodeBuildResult buildResult = XcodeBuildResult(
         success: false,
         stdout: '''
@@ -355,7 +345,7 @@ Exited (sigterm)''',
         xcodeBuildExecution: XcodeBuildExecution(
           buildCommands: <String>['xcrun', 'xcodebuild', 'blah'],
           appDirectory: '/blah/blah',
-          buildForPhysicalDevice: true,
+          environmentType: EnvironmentType.physical,
           buildSettings: buildSettings,
         ),
       );
@@ -365,9 +355,9 @@ Exited (sigterm)''',
         logger.errorText,
         contains('Your Xcode project requires migration.'),
       );
-    }, overrides: noColorTerminalOverride);
+    });
 
-    testUsingContext('embedded and linked framework iOS simulator mismatch shows message', () async {
+    testWithoutContext('embedded and linked framework iOS simulator mismatch shows message', () async {
       final XcodeBuildResult buildResult = XcodeBuildResult(
         success: false,
         stdout: '''
@@ -392,7 +382,7 @@ Exited (sigterm)''',
         xcodeBuildExecution: XcodeBuildExecution(
           buildCommands: <String>['xcrun', 'xcodebuild', 'blah'],
           appDirectory: '/blah/blah',
-          buildForPhysicalDevice: true,
+          environmentType: EnvironmentType.physical,
           buildSettings: buildSettings,
         ),
       );
@@ -402,7 +392,7 @@ Exited (sigterm)''',
         logger.errorText,
         contains('Your Xcode project requires migration.'),
       );
-    }, overrides: noColorTerminalOverride);
+    });
   });
 
   group('Upgrades project.pbxproj for old asset usage', () {
@@ -421,12 +411,9 @@ Exited (sigterm)''',
       'another line';
 
     testWithoutContext('upgradePbxProjWithFlutterAssets', () async {
-      final MockIosProject project = MockIosProject();
       final File pbxprojFile = MemoryFileSystem.test().file('project.pbxproj')
         ..writeAsStringSync(flutterAssetPbxProjLines);
-
-      when(project.xcodeProjectInfoFile).thenReturn(pbxprojFile);
-      when(project.hostAppBundleName(any)).thenAnswer((_) => Future<String>.value('UnitTestRunner.app'));
+      final FakeIosProject project = FakeIosProject(pbxprojFile);
 
       bool result = upgradePbxProjWithFlutterAssets(project, logger);
       expect(result, true);
@@ -456,7 +443,7 @@ Exited (sigterm)''',
   });
 
   group('remove Finder extended attributes', () {
-    Directory projectDirectory;
+    late Directory projectDirectory;
     setUp(() {
       final MemoryFileSystem fs = MemoryFileSystem.test();
       projectDirectory = fs.directory('flutter_project');
@@ -494,4 +481,16 @@ Exited (sigterm)''',
       expect(processManager, hasNoRemainingExpectations);
     });
   });
+}
+
+class FakeIosProject extends Fake implements IosProject {
+  FakeIosProject(this.xcodeProjectInfoFile);
+  @override
+  final File xcodeProjectInfoFile;
+
+  @override
+  Future<String> hostAppBundleName(BuildInfo? buildInfo) async => 'UnitTestRunner.app';
+
+  @override
+  Directory get xcodeProject => xcodeProjectInfoFile.fileSystem.directory('Runner.xcodeproj');
 }

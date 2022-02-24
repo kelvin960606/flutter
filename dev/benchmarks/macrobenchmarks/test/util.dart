@@ -2,10 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
-
-import 'package:macrobenchmarks/common.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:macrobenchmarks/main.dart' as app;
 
@@ -14,11 +12,10 @@ typedef ControlCallback = Future<void> Function(WidgetController controller);
 void macroPerfTestE2E(
   String testName,
   String routeName, {
-  Duration pageDelay,
+  Duration? pageDelay,
   Duration duration = const Duration(seconds: 3),
-  Duration timeout = const Duration(seconds: 30),
-  ControlCallback body,
-  ControlCallback setup,
+  ControlCallback? body,
+  ControlCallback? setup,
 }) {
   final WidgetsBinding _binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   assert(_binding is IntegrationTestWidgetsFlutterBinding);
@@ -36,17 +33,21 @@ void macroPerfTestE2E(
     // See: https://github.com/flutter/flutter/issues/19434
     await tester.binding.delayed(const Duration(microseconds: 250));
 
-    final Finder scrollable =
-        find.byKey(const ValueKey<String>(kScrollableName));
-    expect(scrollable, findsOneWidget);
-    final Finder button =
-        find.byKey(ValueKey<String>(routeName), skipOffstage: false);
-    await tester.scrollUntilVisible(button, 50);
-    expect(button, findsOneWidget);
-    await tester.pumpAndSettle();
-    await tester.tap(button);
-    // Cannot be pumpAndSettle because some tests have infinite animation.
-    await tester.pump(const Duration(milliseconds: 20));
+    expect(routeName, startsWith('/'));
+    int i = 0;
+    while (i < routeName.length) {
+      i = routeName.indexOf('/', i + 1);
+      if (i < 0) {
+        i = routeName.length;
+      }
+      final Finder button = find.byKey(ValueKey<String>(routeName.substring(0, i)), skipOffstage: false);
+      await tester.scrollUntilVisible(button, 50);
+      expect(button, findsOneWidget);
+      await tester.pumpAndSettle();
+      await tester.tap(button);
+      // Cannot be pumpAndSettle because some tests have infinite animation.
+      await tester.pump(const Duration(milliseconds: 20));
+    }
 
     if (pageDelay != null) {
       // Wait for the page to load
@@ -64,5 +65,5 @@ void macroPerfTestE2E(
       }
       await durationFuture;
     });
-  }, semanticsEnabled: false, timeout: Timeout(timeout));
+  }, semanticsEnabled: false, timeout: Timeout.none);
 }

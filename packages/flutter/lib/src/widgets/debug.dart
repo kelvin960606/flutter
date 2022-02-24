@@ -94,9 +94,18 @@ bool debugPrintGlobalKeyedWidgetLifecycle = false;
 
 /// Adds [Timeline] events for every Widget built.
 ///
-/// For details on how to use [Timeline] events in the Dart Observatory to
-/// optimize your app, see https://flutter.dev/docs/testing/debugging#tracing-any-dart-code-performance
-/// and https://fuchsia.googlesource.com/topaz/+/master/shell/docs/performance.md
+/// The timing information this flag exposes is not representative of the actual
+/// cost of building, because the overhead of adding timeline events is
+/// significant relative to the time each object takes to build. However, it can
+/// expose unexpected widget behavior in the timeline.
+///
+/// In debug builds, additional information is included in the trace (such as
+/// the properties of widgets being built). Collecting this data is
+/// expensive and further makes these traces non-representative of actual
+/// performance. This data is omitted in profile builds.
+///
+/// For more information about performance debugging in Flutter, see
+/// <https://flutter.dev/docs/perf/rendering>.
 ///
 /// See also:
 ///
@@ -184,6 +193,8 @@ bool debugItemsHaveDuplicateKeys(Iterable<Widget> items) {
 /// assert(debugCheckHasTable(context));
 /// ```
 ///
+/// This method can be expensive (it walks the element tree).
+///
 /// Does nothing if asserts are disabled. Always returns true.
 bool debugCheckHasTable(BuildContext context) {
   assert(() {
@@ -215,7 +226,7 @@ bool debugCheckHasTable(BuildContext context) {
 /// Does nothing if asserts are disabled. Always returns true.
 bool debugCheckHasMediaQuery(BuildContext context) {
   assert(() {
-    if (context.widget is! MediaQuery && context.findAncestorWidgetOfExactType<MediaQuery>() == null) {
+    if (context.widget is! MediaQuery && context.getElementForInheritedWidgetOfExactType<MediaQuery>() == null) {
       throw FlutterError.fromParts(<DiagnosticsNode>[
         ErrorSummary('No MediaQuery widget ancestor found.'),
         ErrorDescription('${context.widget.runtimeType} widgets require a MediaQuery widget ancestor.'),
@@ -267,7 +278,7 @@ bool debugCheckHasMediaQuery(BuildContext context) {
 /// Does nothing if asserts are disabled. Always returns true.
 bool debugCheckHasDirectionality(BuildContext context, { String? why, String? hint, String? alternative }) {
   assert(() {
-    if (context.widget is! Directionality && context.findAncestorWidgetOfExactType<Directionality>() == null) {
+    if (context.widget is! Directionality && context.getElementForInheritedWidgetOfExactType<Directionality>() == null) {
       why = why == null ? '' : ' $why';
       throw FlutterError.fromParts(<DiagnosticsNode>[
         ErrorSummary('No Directionality widget found.'),
@@ -372,6 +383,8 @@ bool debugCheckHasWidgetsLocalizations(BuildContext context) {
 /// ```dart
 /// assert(debugCheckHasOverlay(context));
 /// ```
+///
+/// This method can be expensive (it walks the element tree).
 ///
 /// Does nothing if asserts are disabled. Always returns true.
 bool debugCheckHasOverlay(BuildContext context) {

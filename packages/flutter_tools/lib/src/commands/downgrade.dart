@@ -35,7 +35,7 @@ class DowngradeCommand extends FlutterCommand {
     Logger logger,
     ProcessManager processManager,
     FlutterVersion flutterVersion,
-    AnsiTerminal terminal,
+    Terminal terminal,
     Stdio stdio,
     FileSystem fileSystem,
   }) : _terminal = terminal,
@@ -61,7 +61,7 @@ class DowngradeCommand extends FlutterCommand {
     );
   }
 
-  AnsiTerminal _terminal;
+  Terminal _terminal;
   FlutterVersion _flutterVersion;
   PersistentToolState _persistentToolState;
   ProcessUtils _processUtils;
@@ -75,6 +75,9 @@ class DowngradeCommand extends FlutterCommand {
 
   @override
   String get name => 'downgrade';
+
+  @override
+  final String category = FlutterCommandCategory.sdk;
 
   @override
   Future<FlutterCommandResult> runCommand() async {

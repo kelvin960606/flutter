@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter/services.dart' show LogicalKeyboardKey;
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
+import 'package:flutter_test/flutter_test.dart';
 
 import 'states.dart';
 
@@ -68,12 +68,12 @@ void main() {
               onTap: () {
                 log.add(state);
               },
+              dragStartBehavior: DragStartBehavior.down,
               child: Container(
                 height: 200.0,
                 color: const Color(0xFF0000FF),
                 child: Text(state),
               ),
-              dragStartBehavior: DragStartBehavior.down,
             );
           }).toList(),
         ),
@@ -113,7 +113,7 @@ void main() {
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-              )
+              ),
             ),
           );
         }).toList(),
@@ -147,7 +147,7 @@ void main() {
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-              )
+              ),
             ),
           );
         },
@@ -181,7 +181,7 @@ void main() {
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                )
+                ),
               ),
             );
           },
@@ -218,7 +218,7 @@ void main() {
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-              )
+              ),
             ),
           );
         },
@@ -252,7 +252,7 @@ void main() {
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-              )
+              ),
             ),
           );
         }).toList(),
@@ -278,7 +278,7 @@ void main() {
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:2),
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         itemCount: focusNodes.length,
-        itemBuilder: (BuildContext context, int index){
+        itemBuilder: (BuildContext context, int index) {
           return Container(
             height: 50,
             color: Colors.green,
@@ -321,7 +321,7 @@ void main() {
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-              )
+              ),
             ),
           );
         }).toList(),
@@ -355,7 +355,7 @@ void main() {
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-              )
+              ),
             ),
           );
         }).toList(),
@@ -390,7 +390,7 @@ void main() {
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                )
+                ),
               ),
             );
           },
@@ -413,22 +413,23 @@ void main() {
     final List<FocusNode> focusNodes = List<FocusNode>.generate(50, (int i) => FocusNode());
 
     await tester.pumpWidget(textFieldBoilerplate(
-        child: ListView(
-      padding: EdgeInsets.zero,
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-      children: focusNodes.map((FocusNode focusNode) {
-        return Container(
-          height: 50,
-          color: Colors.green,
-          child: TextField(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: focusNodes.map((FocusNode focusNode) {
+          return Container(
+            height: 50,
+            color: Colors.green,
+            child: TextField(
               focusNode: focusNode,
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-              )),
-        );
-      }).toList(),
-    )));
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    ));
 
     final Finder finder = find.byType(TextField).first;
     final TextField textField = tester.widget(finder);
@@ -446,7 +447,6 @@ void main() {
     await tester.pumpWidget(textFieldBoilerplate(
       child: ListView.builder(
         padding: EdgeInsets.zero,
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
         itemCount: focusNodes.length,
         itemBuilder: (BuildContext context,int index) {
           return Container(
@@ -457,7 +457,7 @@ void main() {
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-              )
+              ),
             ),
           );
         },
@@ -480,7 +480,6 @@ void main() {
     await tester.pumpWidget(textFieldBoilerplate(
       child: ListView.custom(
         padding: EdgeInsets.zero,
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
         childrenDelegate: SliverChildBuilderDelegate(
           (BuildContext context,int index) {
             return Container(
@@ -491,7 +490,7 @@ void main() {
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                )
+                ),
               ),
             );
           },
@@ -516,7 +515,6 @@ void main() {
     await tester.pumpWidget(textFieldBoilerplate(
       child: ListView.separated(
         padding: EdgeInsets.zero,
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
         itemCount: focusNodes.length,
         separatorBuilder: (BuildContext context, int index) => const Divider(),
         itemBuilder: (BuildContext context,int index) {
@@ -528,7 +526,7 @@ void main() {
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-              )
+              ),
             ),
           );
         },
@@ -552,7 +550,6 @@ void main() {
       child: GridView(
         padding: EdgeInsets.zero,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:2),
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
         children: focusNodes.map((FocusNode focusNode) {
           return Container(
             height: 50,
@@ -562,7 +559,7 @@ void main() {
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-              )
+              ),
             ),
           );
         }).toList(),
@@ -586,9 +583,8 @@ void main() {
       child: GridView.builder(
         padding: EdgeInsets.zero,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:2),
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
         itemCount: focusNodes.length,
-        itemBuilder: (BuildContext context, int index){
+        itemBuilder: (BuildContext context, int index) {
           return Container(
             height: 50,
             color: Colors.green,
@@ -621,7 +617,6 @@ void main() {
       child: GridView.count(
         padding: EdgeInsets.zero,
         crossAxisCount: 2,
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
         children: focusNodes.map((FocusNode focusNode) {
           return Container(
             height: 50,
@@ -631,7 +626,7 @@ void main() {
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-              )
+              ),
             ),
           );
         }).toList(),
@@ -655,7 +650,6 @@ void main() {
       child: GridView.extent(
         padding: EdgeInsets.zero,
         maxCrossAxisExtent: 300,
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
         children: focusNodes.map((FocusNode focusNode) {
           return Container(
             height: 50,
@@ -665,7 +659,7 @@ void main() {
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-              )
+              ),
             ),
           );
         }).toList(),
@@ -689,7 +683,6 @@ void main() {
       child: GridView.custom(
         padding: EdgeInsets.zero,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:2),
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
         childrenDelegate: SliverChildBuilderDelegate(
           (BuildContext context,int index) {
             return Container(
@@ -700,7 +693,7 @@ void main() {
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                )
+                ),
               ),
             );
           },
@@ -743,7 +736,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 10));
     await tester.pump(const Duration(milliseconds: 10));
     await tester.pump(const Duration(milliseconds: 10));
-    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
 
     final Viewport viewport = tester.widget(find.byType(Viewport));
     expect(viewport.offset.pixels, equals(2400.0));
@@ -816,7 +809,7 @@ void main() {
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                    )
+                    ),
                   ),
                 );
               }).toList(),
@@ -895,18 +888,17 @@ void main() {
   });
 
   testWidgets('Vertical CustomScrollViews are primary by default', (WidgetTester tester) async {
-    const CustomScrollView view = CustomScrollView(scrollDirection: Axis.vertical);
+    const CustomScrollView view = CustomScrollView();
     expect(view.primary, isTrue);
   });
 
   testWidgets('Vertical ListViews are primary by default', (WidgetTester tester) async {
-    final ListView view = ListView(scrollDirection: Axis.vertical);
+    final ListView view = ListView();
     expect(view.primary, isTrue);
   });
 
   testWidgets('Vertical GridViews are primary by default', (WidgetTester tester) async {
     final GridView view = GridView.count(
-      scrollDirection: Axis.vertical,
       crossAxisCount: 1,
     );
     expect(view.primary, isTrue);
@@ -933,7 +925,6 @@ void main() {
   testWidgets('CustomScrollViews with controllers are non-primary by default', (WidgetTester tester) async {
     final CustomScrollView view = CustomScrollView(
       controller: ScrollController(),
-      scrollDirection: Axis.vertical,
     );
     expect(view.primary, isFalse);
   });
@@ -941,7 +932,6 @@ void main() {
   testWidgets('ListViews with controllers are non-primary by default', (WidgetTester tester) async {
     final ListView view = ListView(
       controller: ScrollController(),
-      scrollDirection: Axis.vertical,
     );
     expect(view.primary, isFalse);
   });
@@ -949,7 +939,6 @@ void main() {
   testWidgets('GridViews with controllers are non-primary by default', (WidgetTester tester) async {
     final GridView view = GridView.count(
       controller: ScrollController(),
-      scrollDirection: Axis.vertical,
       crossAxisCount: 1,
     );
     expect(view.primary, isFalse);
@@ -1041,7 +1030,7 @@ void main() {
   });
 
   testWidgets('Defaulting-to-primary ListViews are always scrollable', (WidgetTester tester) async {
-    final ListView view = ListView(scrollDirection: Axis.vertical);
+    final ListView view = ListView();
     expect(view.physics, isA<AlwaysScrollableScrollPhysics>());
   });
 
@@ -1062,7 +1051,6 @@ void main() {
           },
           child: ListView(
             primary: true,
-            children: const <Widget>[],
           ),
         ),
       ),
@@ -1083,7 +1071,6 @@ void main() {
           },
           child: ListView(
             primary: false,
-            children: const <Widget>[],
           ),
         ),
       ),
@@ -1105,7 +1092,6 @@ void main() {
           child: ListView(
             primary: false,
             physics: const AlwaysScrollableScrollPhysics(),
-            children: const <Widget>[],
           ),
         ),
       ),
@@ -1127,7 +1113,6 @@ void main() {
           child: ListView(
             primary: true,
             physics: const ScrollPhysics(),
-            children: const <Widget>[],
           ),
         ),
       ),
@@ -1231,6 +1216,13 @@ void main() {
     expect(finder, findsOneWidget);
   });
 
+   testWidgets('ListView asserts on both non-null itemExtent and prototypeItem', (WidgetTester tester) async {
+    expect(() => ListView(
+      itemExtent: 100,
+      prototypeItem: const SizedBox(),
+    ), throwsAssertionError);
+  });
+
   testWidgets('ListView.builder asserts on negative childCount', (WidgetTester tester) async {
     expect(() => ListView.builder(
       itemBuilder: (BuildContext context, int index) {
@@ -1260,6 +1252,28 @@ void main() {
     ), throwsAssertionError);
   });
 
+  testWidgets('ListView.builder asserts on both non-null itemExtent and prototypeItem', (WidgetTester tester) async {
+    expect(() => ListView.builder(
+      itemBuilder: (BuildContext context, int index) {
+        return const SizedBox();
+      },
+      itemExtent: 100,
+      prototypeItem: const SizedBox(),
+    ), throwsAssertionError);
+  });
+
+  testWidgets('ListView.custom asserts on both non-null itemExtent and prototypeItem', (WidgetTester tester) async {
+    expect(() => ListView.custom(
+      childrenDelegate: SliverChildBuilderDelegate(
+        (BuildContext context, int index) {
+          return const SizedBox();
+        },
+      ),
+      itemExtent: 100,
+      prototypeItem: const SizedBox(),
+    ), throwsAssertionError);
+  });
+
   testWidgets('PrimaryScrollController provides fallback ScrollActions', (WidgetTester tester)  async {
     await tester.pumpWidget(
       MaterialApp(
@@ -1280,7 +1294,7 @@ void main() {
       ),
     );
     final ScrollController controller = PrimaryScrollController.of(
-      tester.element(find.byType(CustomScrollView))
+      tester.element(find.byType(CustomScrollView)),
     )!;
     await tester.pumpAndSettle();
     expect(controller.position.pixels, equals(0.0));
@@ -1302,5 +1316,84 @@ void main() {
       tester.getRect(find.byKey(const ValueKey<String>('Box 0'), skipOffstage: false)),
       equals(const Rect.fromLTRB(0.0, 0.0, 800.0, 50.0)),
     );
+  });
+
+  testWidgets('if itemExtent is non-null, children have same extent in the scroll direction', (WidgetTester tester) async {
+    final List<int> numbers = <int>[0,1,2];
+
+    await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (BuildContext context, StateSetter setState) {
+                return ListView.builder(
+                  itemBuilder: (BuildContext context, int index) {
+                    return SizedBox(
+                        key: ValueKey<int>(numbers[index]),
+                        // children with different heights
+                        height: 20 + numbers[index] * 10,
+                        child: ReorderableDragStartListener(
+                          index: index,
+                          child: Text(numbers[index].toString()),
+                        )
+                    );
+                  },
+                  itemCount: numbers.length,
+                  itemExtent: 30,
+                );
+              },
+            ),
+          ),
+        )
+    );
+
+    final double item0Height = tester.getSize(find.text('0').hitTestable()).height;
+    final double item1Height = tester.getSize(find.text('1').hitTestable()).height;
+    final double item2Height = tester.getSize(find.text('2').hitTestable()).height;
+
+    expect(item0Height, 30.0);
+    expect(item1Height, 30.0);
+    expect(item2Height, 30.0);
+  });
+
+  testWidgets('if prototypeItem is non-null, children have same extent in the scroll direction', (WidgetTester tester) async {
+    final List<int> numbers = <int>[0,1,2];
+
+    await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (BuildContext context, StateSetter setState) {
+                return ListView.builder(
+                  itemBuilder: (BuildContext context, int index) {
+                    return SizedBox(
+                        key: ValueKey<int>(numbers[index]),
+                        // children with different heights
+                        height: 20 + numbers[index] * 10,
+                        child: ReorderableDragStartListener(
+                          index: index,
+                          child: Text(numbers[index].toString()),
+                        )
+                    );
+                  },
+                  itemCount: numbers.length,
+                  prototypeItem: const SizedBox(
+                      height: 30,
+                      child: Text('3'),
+                  ),
+                );
+              },
+            ),
+          ),
+        )
+    );
+
+    final double item0Height = tester.getSize(find.text('0').hitTestable()).height;
+    final double item1Height = tester.getSize(find.text('1').hitTestable()).height;
+    final double item2Height = tester.getSize(find.text('2').hitTestable()).height;
+
+    expect(item0Height, 30.0);
+    expect(item1Height, 30.0);
+    expect(item2Height, 30.0);
   });
 }

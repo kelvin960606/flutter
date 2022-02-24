@@ -501,7 +501,7 @@ class RenderAspectRatio extends RenderProxyBox {
           '$runtimeType has unbounded constraints.\n'
           'This $runtimeType was given an aspect ratio of $aspectRatio but was given '
           'both unbounded width and unbounded height constraints. Because both '
-          'constraints were unbounded, this render object doesn\'t know how much '
+          "constraints were unbounded, this render object doesn't know how much "
           'size to consume.',
         );
       }
@@ -843,7 +843,7 @@ class RenderOpacity extends RenderProxyBox {
        super(child);
 
   @override
-  bool get alwaysNeedsCompositing => child != null && (_alpha != 0 && _alpha != 255);
+  bool get alwaysNeedsCompositing => child != null && (_alpha > 0);
 
   int _alpha;
 
@@ -895,12 +895,6 @@ class RenderOpacity extends RenderProxyBox {
       if (_alpha == 0) {
         // No need to keep the layer. We'll create a new one if necessary.
         layer = null;
-        return;
-      }
-      if (_alpha == 255) {
-        // No need to keep the layer. We'll create a new one if necessary.
-        layer = null;
-        context.paintChild(child!, offset);
         return;
       }
       assert(needsCompositing);
@@ -993,7 +987,7 @@ mixin RenderAnimatedOpacityMixin<T extends RenderObject> on RenderObjectWithChil
     _alpha = ui.Color.getAlphaFromOpacity(opacity.value);
     if (oldAlpha != _alpha) {
       final bool? didNeedCompositing = _currentlyNeedsCompositing;
-      _currentlyNeedsCompositing = _alpha! > 0 && _alpha! < 255;
+      _currentlyNeedsCompositing = _alpha! > 0;
       if (child != null && didNeedCompositing != _currentlyNeedsCompositing)
         markNeedsCompositingBitsUpdate();
       markNeedsPaint();
@@ -1008,12 +1002,6 @@ mixin RenderAnimatedOpacityMixin<T extends RenderObject> on RenderObjectWithChil
       if (_alpha == 0) {
         // No need to keep the layer. We'll create a new one if necessary.
         layer = null;
-        return;
-      }
-      if (_alpha == 255) {
-        // No need to keep the layer. We'll create a new one if necessary.
-        layer = null;
-        context.paintChild(child!, offset);
         return;
       }
       assert(needsCompositing);
@@ -1141,9 +1129,13 @@ class RenderBackdropFilter extends RenderProxyBox {
   /// Creates a backdrop filter.
   ///
   /// The [filter] argument must not be null.
-  RenderBackdropFilter({ RenderBox? child, required ui.ImageFilter filter })
+  /// The [blendMode] argument, if provided, must not be null
+  /// and will default to [BlendMode.srcOver].
+  RenderBackdropFilter({ RenderBox? child, required ui.ImageFilter filter, BlendMode blendMode = BlendMode.srcOver })
     : assert(filter != null),
+      assert(blendMode != null),
       _filter = filter,
+      _blendMode = blendMode,
       super(child);
 
   @override
@@ -1164,6 +1156,20 @@ class RenderBackdropFilter extends RenderProxyBox {
     markNeedsPaint();
   }
 
+  /// The blend mode to use to apply the filtered background content onto the background
+  /// surface.
+  ///
+  /// {@macro flutter.widgets.BackdropFilter.blendMode}
+  BlendMode get blendMode => _blendMode;
+  BlendMode _blendMode;
+  set blendMode(BlendMode value) {
+    assert(value != null);
+    if (_blendMode == value)
+      return;
+    _blendMode = value;
+    markNeedsPaint();
+  }
+
   @override
   bool get alwaysNeedsCompositing => child != null;
 
@@ -1173,6 +1179,7 @@ class RenderBackdropFilter extends RenderProxyBox {
       assert(needsCompositing);
       layer ??= BackdropFilterLayer();
       layer!.filter = _filter;
+      layer!.blendMode = _blendMode;
       context.pushLayer(layer!, super.paint, offset);
     } else {
       layer = null;
@@ -2186,12 +2193,14 @@ class RenderTransform extends RenderProxyBox {
     AlignmentGeometry? alignment,
     TextDirection? textDirection,
     this.transformHitTests = true,
+    FilterQuality? filterQuality,
     RenderBox? child,
   }) : assert(transform != null),
        super(child) {
     this.transform = transform;
     this.alignment = alignment;
     this.textDirection = textDirection;
+    this.filterQuality = filterQuality;
     this.origin = origin;
   }
 
@@ -2245,6 +2254,9 @@ class RenderTransform extends RenderProxyBox {
     markNeedsSemanticsUpdate();
   }
 
+  @override
+  bool get alwaysNeedsCompositing => child != null && _filterQuality != null;
+
   /// When set to true, hit tests are performed based on the position of the
   /// child as it is painted. When set to false, hit tests are performed
   /// ignoring the transformation.
@@ -2253,17 +2265,35 @@ class RenderTransform extends RenderProxyBox {
   /// always honor the transformation, regardless of the value of this property.
   bool transformHitTests;
 
-  // Note the lack of a getter for transform because Matrix4 is not immutable
   Matrix4? _transform;
-
-  /// The matrix to transform the child by during painting.
-  set transform(Matrix4 value) {
+  /// The matrix to transform the child by during painting. The provided value
+  /// is copied on assignment.
+  ///
+  /// There is no getter for [transform], because [Matrix4] is mutable, and
+  /// mutations outside of the control of the render object could not reliably
+  /// be reflected in the rendering.
+  set transform(Matrix4 value) { // ignore: avoid_setters_without_getters
     assert(value != null);
     if (_transform == value)
       return;
     _transform = Matrix4.copy(value);
     markNeedsPaint();
     markNeedsSemanticsUpdate();
+  }
+
+  /// The filter quality with which to apply the transform as a bitmap operation.
+  ///
+  /// {@macro flutter.widgets.Transform.optional.FilterQuality}
+  FilterQuality? get filterQuality => _filterQuality;
+  FilterQuality? _filterQuality;
+  set filterQuality(FilterQuality? value) {
+    if (_filterQuality == value)
+      return;
+    final bool didNeedCompositing = alwaysNeedsCompositing;
+    _filterQuality = value;
+    if (didNeedCompositing != alwaysNeedsCompositing)
+      markNeedsCompositingBitsUpdate();
+    markNeedsPaint();
   }
 
   /// Sets the transform to the identity matrix.
@@ -2343,8 +2373,8 @@ class RenderTransform extends RenderProxyBox {
     return result.addWithPaintTransform(
       transform: transformHitTests ? _effectiveTransform : null,
       position: position,
-      hitTest: (BoxHitTestResult result, Offset? position) {
-        return super.hitTestChildren(result, position: position!);
+      hitTest: (BoxHitTestResult result, Offset position) {
+        return super.hitTestChildren(result, position: position);
       },
     );
   }
@@ -2353,18 +2383,34 @@ class RenderTransform extends RenderProxyBox {
   void paint(PaintingContext context, Offset offset) {
     if (child != null) {
       final Matrix4 transform = _effectiveTransform!;
-      final Offset? childOffset = MatrixUtils.getAsTranslation(transform);
-      if (childOffset == null) {
-        layer = context.pushTransform(
-          needsCompositing,
-          offset,
-          transform,
-          super.paint,
-          oldLayer: layer as TransformLayer?,
-        );
+      if (filterQuality == null) {
+        final Offset? childOffset = MatrixUtils.getAsTranslation(transform);
+        if (childOffset == null) {
+          layer = context.pushTransform(
+            needsCompositing,
+            offset,
+            transform,
+            super.paint,
+            oldLayer: layer is TransformLayer ? layer as TransformLayer? : null,
+          );
+        } else {
+          super.paint(context, offset + childOffset);
+          layer = null;
+        }
       } else {
-        super.paint(context, offset + childOffset);
-        layer = null;
+        final Matrix4 effectiveTransform = Matrix4.translationValues(offset.dx, offset.dy, 0.0)
+          ..multiply(transform)..translate(-offset.dx, -offset.dy);
+        final ui.ImageFilter filter = ui.ImageFilter.matrix(
+          effectiveTransform.storage,
+          filterQuality: filterQuality!,
+        );
+        if (layer is ImageFilterLayer) {
+          final ImageFilterLayer filterLayer = layer! as ImageFilterLayer;
+          filterLayer.imageFilter = filter;
+        } else {
+          layer = ImageFilterLayer(imageFilter: filter);
+        }
+        context.pushLayer(layer!, super.paint, offset);
       }
     }
   }
@@ -2422,7 +2468,12 @@ class RenderFittedBox extends RenderProxyBox {
     switch (fit) {
       case BoxFit.scaleDown:
         return true;
-      default:
+      case BoxFit.contain:
+      case BoxFit.cover:
+      case BoxFit.fill:
+      case BoxFit.fitHeight:
+      case BoxFit.fitWidth:
+      case BoxFit.none:
         return false;
     }
   }
@@ -2507,7 +2558,12 @@ class RenderFittedBox extends RenderProxyBox {
           final BoxConstraints sizeConstraints = constraints.loosen();
           final Size unconstrainedSize = sizeConstraints.constrainSizeAndAttemptToPreserveAspectRatio(childSize);
           return constraints.constrain(unconstrainedSize);
-        default:
+        case BoxFit.contain:
+        case BoxFit.cover:
+        case BoxFit.fill:
+        case BoxFit.fitHeight:
+        case BoxFit.fitWidth:
+        case BoxFit.none:
           return constraints.constrainSizeAndAttemptToPreserveAspectRatio(childSize);
       }
     } else {
@@ -2525,7 +2581,12 @@ class RenderFittedBox extends RenderProxyBox {
           final Size unconstrainedSize = sizeConstraints.constrainSizeAndAttemptToPreserveAspectRatio(child!.size);
           size = constraints.constrain(unconstrainedSize);
           break;
-        default:
+        case BoxFit.contain:
+        case BoxFit.cover:
+        case BoxFit.fill:
+        case BoxFit.fitHeight:
+        case BoxFit.fitWidth:
+        case BoxFit.none:
           size = constraints.constrainSizeAndAttemptToPreserveAspectRatio(child!.size);
           break;
       }
@@ -2598,21 +2659,21 @@ class RenderFittedBox extends RenderProxyBox {
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    if (size.isEmpty || child!.size.isEmpty)
+    if (child == null || size.isEmpty || child!.size.isEmpty)
       return;
     _updatePaintData();
-    if (child != null) {
-      if (_hasVisualOverflow! && clipBehavior != Clip.none)
-        layer = context.pushClipRect(
-          needsCompositing,
-          offset,
-          Offset.zero & size,
-          _paintChildWithTransform,
-          oldLayer: layer is ClipRectLayer ? layer! as ClipRectLayer : null,
-          clipBehavior: clipBehavior,
-        );
-      else
-        layer = _paintChildWithTransform(context, offset);
+    assert(child != null);
+    if (_hasVisualOverflow! && clipBehavior != Clip.none) {
+      layer = context.pushClipRect(
+        needsCompositing,
+        offset,
+        Offset.zero & size,
+        _paintChildWithTransform,
+        oldLayer: layer is ClipRectLayer ? layer! as ClipRectLayer : null,
+        clipBehavior: clipBehavior,
+      );
+    } else {
+      layer = _paintChildWithTransform(context, offset);
     }
   }
 
@@ -2624,8 +2685,8 @@ class RenderFittedBox extends RenderProxyBox {
     return result.addWithPaintTransform(
       transform: _transform,
       position: position,
-      hitTest: (BoxHitTestResult result, Offset? position) {
-        return super.hitTestChildren(result, position: position!);
+      hitTest: (BoxHitTestResult result, Offset position) {
+        return super.hitTestChildren(result, position: position);
       },
     );
   }
@@ -2710,8 +2771,8 @@ class RenderFractionalTranslation extends RenderProxyBox {
           ? Offset(translation.dx * size.width, translation.dy * size.height)
           : null,
       position: position,
-      hitTest: (BoxHitTestResult result, Offset? position) {
-        return super.hitTestChildren(result, position: position!);
+      hitTest: (BoxHitTestResult result, Offset position) {
+        return super.hitTestChildren(result, position: position);
       },
     );
   }
@@ -3022,7 +3083,7 @@ class RenderMouseRegion extends RenderProxyBox implements MouseTrackerAnnotation
 /// application and the rest of the application would not repaint.
 ///
 /// To tell if a particular RenderRepaintBoundary is useful, run your
-/// application in checked mode, interacting with it in typical ways, and then
+/// application in debug mode, interacting with it in typical ways, and then
 /// call [debugDumpRenderTree]. Each RenderRepaintBoundary will include the
 /// ratio of cases where the repaint boundary was useful vs the cases where it
 /// was not. These counts can also be inspected programmatically using
@@ -3059,7 +3120,7 @@ class RenderRepaintBoundary extends RenderProxyBox {
   ///   const PngHome({Key? key}) : super(key: key);
   ///
   ///   @override
-  ///   _PngHomeState createState() => _PngHomeState();
+  ///   State<PngHome> createState() => _PngHomeState();
   /// }
   ///
   /// class _PngHomeState extends State<PngHome> {
@@ -3098,7 +3159,6 @@ class RenderRepaintBoundary extends RenderProxyBox {
     final OffsetLayer offsetLayer = layer! as OffsetLayer;
     return offsetLayer.toImage(Offset.zero & size, pixelRatio: pixelRatio);
   }
-
 
   /// The number of times that this render object repainted at the same time as
   /// its parent. Repaint boundaries are only useful when the parent and child
@@ -3185,7 +3245,7 @@ class RenderRepaintBoundary extends RenderProxyBox {
       return true;
     }());
     if (inReleaseMode)
-      properties.add(DiagnosticsNode.message('(run in checked mode to collect repaint boundary statistics)'));
+      properties.add(DiagnosticsNode.message('(run in debug mode to collect repaint boundary statistics)'));
   }
 }
 
@@ -3705,7 +3765,7 @@ class RenderSemanticsAnnotations extends RenderProxyBox {
   ///
   /// The [container] argument must not be null.
   ///
-  /// If the [label] is not null, the [textDirection] must also not be null.
+  /// If the [attributedLabel] is not null, the [textDirection] must also not be null.
   RenderSemanticsAnnotations({
     RenderBox? child,
     bool container = false,
@@ -3734,11 +3794,11 @@ class RenderSemanticsAnnotations extends RenderProxyBox {
     bool? liveRegion,
     int? maxValueLength,
     int? currentValueLength,
-    String? label,
-    String? value,
-    String? increasedValue,
-    String? decreasedValue,
-    String? hint,
+    AttributedString? attributedLabel,
+    AttributedString? attributedValue,
+    AttributedString? attributedIncreasedValue,
+    AttributedString? attributedDecreasedValue,
+    AttributedString? attributedHint,
     SemanticsHintOverrides? hintOverrides,
     TextDirection? textDirection,
     SemanticsSortKey? sortKey,
@@ -3792,11 +3852,11 @@ class RenderSemanticsAnnotations extends RenderProxyBox {
        _hidden = hidden,
        _image = image,
        _onDismiss = onDismiss,
-       _label = label,
-       _value = value,
-       _increasedValue = increasedValue,
-       _decreasedValue = decreasedValue,
-       _hint = hint,
+       _attributedLabel = attributedLabel,
+       _attributedValue = attributedValue,
+       _attributedIncreasedValue = attributedIncreasedValue,
+       _attributedDecreasedValue = attributedDecreasedValue,
+       _attributedHint = attributedHint,
        _hintOverrides = hintOverrides,
        _textDirection = textDirection,
        _sortKey = sortKey,
@@ -4131,65 +4191,63 @@ class RenderSemanticsAnnotations extends RenderProxyBox {
     markNeedsSemanticsUpdate();
   }
 
-  /// If non-null, sets the [SemanticsNode.label] semantic to the given value.
+  /// If non-null, sets the [SemanticsNode.attributedLabel] semantic to the given value.
   ///
   /// The reading direction is given by [textDirection].
-  String? get label => _label;
-  String? _label;
-  set label(String? value) {
-    if (_label == value)
+  AttributedString? get attributedLabel => _attributedLabel;
+  AttributedString? _attributedLabel;
+  set attributedLabel(AttributedString? value) {
+    if (_attributedLabel == value)
       return;
-    _label = value;
+    _attributedLabel = value;
     markNeedsSemanticsUpdate();
   }
 
-  /// If non-null, sets the [SemanticsNode.value] semantic to the given value.
+  /// If non-null, sets the [SemanticsNode.attributedValue] semantic to the given value.
   ///
   /// The reading direction is given by [textDirection].
-  String? get value => _value;
-  String? _value;
-  set value(String? value) {
-    if (_value == value)
+  AttributedString? get attributedValue => _attributedValue;
+  AttributedString? _attributedValue;
+  set attributedValue(AttributedString? value) {
+    if (_attributedValue == value)
       return;
-    _value = value;
+    _attributedValue = value;
     markNeedsSemanticsUpdate();
   }
 
-  /// If non-null, sets the [SemanticsNode.increasedValue] semantic to the given
-  /// value.
+  /// If non-null, sets the [SemanticsNode.attributedIncreasedValue] semantic to the given value.
   ///
   /// The reading direction is given by [textDirection].
-  String? get increasedValue => _increasedValue;
-  String? _increasedValue;
-  set increasedValue(String? value) {
-    if (_increasedValue == value)
+  AttributedString? get attributedIncreasedValue => _attributedIncreasedValue;
+  AttributedString? _attributedIncreasedValue;
+  set attributedIncreasedValue(AttributedString? value) {
+    if (_attributedIncreasedValue == value)
       return;
-    _increasedValue = value;
+    _attributedIncreasedValue = value;
     markNeedsSemanticsUpdate();
   }
 
-  /// If non-null, sets the [SemanticsNode.decreasedValue] semantic to the given
-  /// value.
+  /// If non-null, sets the [SemanticsNode.attributedDecreasedValue] semantic to the given value.
   ///
   /// The reading direction is given by [textDirection].
-  String? get decreasedValue => _decreasedValue;
-  String? _decreasedValue;
-  set decreasedValue(String? value) {
-    if (_decreasedValue == value)
+  AttributedString? get attributedDecreasedValue => _attributedDecreasedValue;
+  AttributedString? _attributedDecreasedValue;
+  set attributedDecreasedValue(AttributedString? value) {
+    if (_attributedDecreasedValue == value)
       return;
-    _decreasedValue = value;
+    _attributedDecreasedValue = value;
     markNeedsSemanticsUpdate();
   }
 
-  /// If non-null, sets the [SemanticsNode.hint] semantic to the given value.
+  /// If non-null, sets the [SemanticsNode.attributedHint] semantic to the given value.
   ///
   /// The reading direction is given by [textDirection].
-  String? get hint => _hint;
-  String? _hint;
-  set hint(String? value) {
-    if (_hint == value)
+  AttributedString? get attributedHint => _attributedHint;
+  AttributedString? _attributedHint;
+  set attributedHint(AttributedString? value) {
+    if (_attributedHint == value)
       return;
-    _hint = value;
+    _attributedHint = value;
     markNeedsSemanticsUpdate();
   }
 
@@ -4203,10 +4261,12 @@ class RenderSemanticsAnnotations extends RenderProxyBox {
     markNeedsSemanticsUpdate();
   }
 
-  /// If non-null, sets the [SemanticsNode.textDirection] semantic to the given value.
+  /// If non-null, sets the [SemanticsNode.textDirection] semantic to the given
+  /// value.
   ///
-  /// This must not be null if [label], [hint], [value], [increasedValue], or
-  /// [decreasedValue] are not null.
+  /// This must not be null if [attributedLabel], [attributedHint],
+  /// [attributedValue], [attributedIncreasedValue], or
+  /// [attributedDecreasedValue] are not null.
   TextDirection? get textDirection => _textDirection;
   TextDirection? _textDirection;
   set textDirection(TextDirection? value) {
@@ -4230,7 +4290,7 @@ class RenderSemanticsAnnotations extends RenderProxyBox {
     markNeedsSemanticsUpdate();
   }
 
-  /// Adds a semenatics tag to the semantics subtree.
+  /// Adds a semantics tag to the semantics subtree.
   SemanticsTag? get tagForChildren => _tagForChildren;
   SemanticsTag? _tagForChildren;
   set tagForChildren(SemanticsTag? value) {
@@ -4713,16 +4773,16 @@ class RenderSemanticsAnnotations extends RenderProxyBox {
       config.isHidden = hidden!;
     if (image != null)
       config.isImage = image!;
-    if (label != null)
-      config.label = label!;
-    if (value != null)
-      config.value = value!;
-    if (increasedValue != null)
-      config.increasedValue = increasedValue!;
-    if (decreasedValue != null)
-      config.decreasedValue = decreasedValue!;
-    if (hint != null)
-      config.hint = hint!;
+    if (attributedLabel != null)
+      config.attributedLabel = attributedLabel!;
+    if (attributedValue != null)
+      config.attributedValue = attributedValue!;
+    if (attributedIncreasedValue != null)
+      config.attributedIncreasedValue = attributedIncreasedValue!;
+    if (attributedDecreasedValue != null)
+      config.attributedDecreasedValue = attributedDecreasedValue!;
+    if (attributedHint != null)
+      config.attributedHint = attributedHint!;
     if (hintOverrides != null && hintOverrides!.isNotEmpty)
       config.hintOverrides = hintOverrides;
     if (scopesRoute != null)
@@ -5004,7 +5064,6 @@ class RenderIndexedSemantics extends RenderProxyBox {
   @override
   void describeSemanticsConfiguration(SemanticsConfiguration config) {
     super.describeSemanticsConfiguration(config);
-    config.isSemanticBoundary = true;
     config.indexInParent = index;
   }
 
@@ -5230,7 +5289,7 @@ class RenderFollowerLayer extends RenderProxyBox {
   @override
   bool hitTest(BoxHitTestResult result, { required Offset position }) {
     // Disables the hit testing if this render object is hidden.
-    if (link.leader == null && !showWhenUnlinked)
+    if (!link.leaderConnected && !showWhenUnlinked)
       return false;
     // RenderFollowerLayer objects don't check if they are
     // themselves hit, because it's confusing to think about
@@ -5244,8 +5303,8 @@ class RenderFollowerLayer extends RenderProxyBox {
     return result.addWithPaintTransform(
       transform: getCurrentTransform(),
       position: position,
-      hitTest: (BoxHitTestResult result, Offset? position) {
-        return super.hitTestChildren(result, position: position!);
+      hitTest: (BoxHitTestResult result, Offset position) {
+        return super.hitTestChildren(result, position: position);
       },
     );
   }
@@ -5254,8 +5313,8 @@ class RenderFollowerLayer extends RenderProxyBox {
   void paint(PaintingContext context, Offset offset) {
     final Size? leaderSize = link.leaderSize;
     assert(
-      link.leaderSize != null || (link.leader == null || leaderAnchor == Alignment.topLeft),
-      '$link: layer is linked to ${link.leader} but a valid leaderSize is not set. '
+      link.leaderSize != null || (!link.leaderConnected || leaderAnchor == Alignment.topLeft),
+      '$link: layer is linked to ${link.debugLeader} but a valid leaderSize is not set. '
       'leaderSize is required when leaderAnchor is not Alignment.topLeft '
       '(current value is $leaderAnchor).',
     );

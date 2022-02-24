@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'basic_types.dart';
 import 'colors.dart';
 import 'strut_style.dart';
+import 'text_painter.dart';
 
 const String _kDefaultDebugLabel = 'unknown';
 
@@ -425,6 +426,16 @@ const double _kDefaultFontSize = 14.0;
 ///
 /// ### Inconsistent platform fonts
 ///
+/// By default, fonts differ depending on the platform.
+///
+///  * The default font-family for `Android`,`Fuchsia` and `Linux` is `Roboto`.
+///  * The default font-family for `iOS` is `.SF UI Display`/`.SF UI Text`.
+///  * The default font-family for `MacOS` is `.AppleSystemUIFont`.
+///  * The default font-family for `Windows` is `Segoe UI`.
+//
+// The implementation of these defaults can be found in:
+// /packages/flutter/lib/src/material/typography.dart
+///
 /// Since Flutter's font discovery for default fonts depends on the fonts present
 /// on the device, it is not safe to assume all default fonts will be available or
 /// consistent across devices.
@@ -480,6 +491,7 @@ class TextStyle with Diagnosticable {
     String? fontFamily,
     List<String>? fontFamilyFallback,
     String? package,
+    this.overflow,
   }) : fontFamily = package == null ? fontFamily : 'packages/$package/$fontFamily',
        _fontFamilyFallback = fontFamilyFallback,
        _package = package,
@@ -758,6 +770,20 @@ class TextStyle with Diagnosticable {
   /// these variants will be used for rendering.
   final List<ui.FontFeature>? fontFeatures;
 
+  /// How visual text overflow should be handled.
+  final TextOverflow? overflow;
+
+  // Return the original value of fontFamily, without the additional
+  // "packages/$_package/" prefix.
+  String? get _fontFamily {
+    if (_package != null && fontFamily != null) {
+      final String fontFamilyPrefix = 'packages/$_package/';
+      assert(fontFamily!.startsWith(fontFamilyPrefix));
+      return fontFamily!.substring(fontFamilyPrefix.length);
+    }
+    return fontFamily;
+  }
+
   /// Creates a copy of this text style but with the given fields replaced with
   /// the new values.
   ///
@@ -771,8 +797,6 @@ class TextStyle with Diagnosticable {
     bool? inherit,
     Color? color,
     Color? backgroundColor,
-    String? fontFamily,
-    List<String>? fontFamilyFallback,
     double? fontSize,
     FontWeight? fontWeight,
     FontStyle? fontStyle,
@@ -791,6 +815,10 @@ class TextStyle with Diagnosticable {
     TextDecorationStyle? decorationStyle,
     double? decorationThickness,
     String? debugLabel,
+    String? fontFamily,
+    List<String>? fontFamilyFallback,
+    String? package,
+    TextOverflow? overflow,
   }) {
     assert(color == null || foreground == null, _kColorForegroundWarning);
     assert(backgroundColor == null || background == null, _kColorBackgroundWarning);
@@ -800,12 +828,11 @@ class TextStyle with Diagnosticable {
         newDebugLabel = debugLabel ?? '(${this.debugLabel}).copyWith';
       return true;
     }());
+
     return TextStyle(
       inherit: inherit ?? this.inherit,
       color: this.foreground == null && foreground == null ? color ?? this.color : null,
       backgroundColor: this.background == null && background == null ? backgroundColor ?? this.backgroundColor : null,
-      fontFamily: fontFamily ?? this.fontFamily,
-      fontFamilyFallback: fontFamilyFallback ?? this.fontFamilyFallback,
       fontSize: fontSize ?? this.fontSize,
       fontWeight: fontWeight ?? this.fontWeight,
       fontStyle: fontStyle ?? this.fontStyle,
@@ -824,6 +851,10 @@ class TextStyle with Diagnosticable {
       decorationStyle: decorationStyle ?? this.decorationStyle,
       decorationThickness: decorationThickness ?? this.decorationThickness,
       debugLabel: newDebugLabel,
+      fontFamily: fontFamily ?? _fontFamily,
+      fontFamilyFallback: fontFamilyFallback ?? this.fontFamilyFallback,
+      package: package ?? _package,
+      overflow: overflow ?? this.overflow,
     );
   }
 
@@ -881,6 +912,8 @@ class TextStyle with Diagnosticable {
     Locale? locale,
     List<ui.Shadow>? shadows,
     List<ui.FontFeature>? fontFeatures,
+    String? package,
+    TextOverflow? overflow,
   }) {
     assert(fontSizeFactor != null);
     assert(fontSizeDelta != null);
@@ -910,7 +943,7 @@ class TextStyle with Diagnosticable {
       inherit: inherit,
       color: foreground == null ? color ?? this.color : null,
       backgroundColor: background == null ? backgroundColor ?? this.backgroundColor : null,
-      fontFamily: fontFamily ?? this.fontFamily,
+      fontFamily: fontFamily ?? _fontFamily,
       fontFamilyFallback: fontFamilyFallback ?? this.fontFamilyFallback,
       fontSize: fontSize == null ? null : fontSize! * fontSizeFactor + fontSizeDelta,
       fontWeight: fontWeight == null ? null : FontWeight.values[(fontWeight!.index + fontWeightDelta).clamp(0, FontWeight.values.length - 1)],
@@ -929,6 +962,8 @@ class TextStyle with Diagnosticable {
       decorationColor: decorationColor ?? this.decorationColor,
       decorationStyle: decorationStyle ?? this.decorationStyle,
       decorationThickness: decorationThickness == null ? null : decorationThickness! * decorationThicknessFactor + decorationThicknessDelta,
+      overflow: overflow ?? this.overflow,
+      package: package ?? _package,
       debugLabel: modifiedDebugLabel,
     );
   }
@@ -970,8 +1005,6 @@ class TextStyle with Diagnosticable {
     return copyWith(
       color: other.color,
       backgroundColor: other.backgroundColor,
-      fontFamily: other.fontFamily,
-      fontFamilyFallback: other.fontFamilyFallback,
       fontSize: other.fontSize,
       fontWeight: other.fontWeight,
       fontStyle: other.fontStyle,
@@ -990,6 +1023,10 @@ class TextStyle with Diagnosticable {
       decorationStyle: other.decorationStyle,
       decorationThickness: other.decorationThickness,
       debugLabel: mergedDebugLabel,
+      fontFamily: other._fontFamily,
+      fontFamilyFallback: other.fontFamilyFallback,
+      package: other._package,
+      overflow: other.overflow,
     );
   }
 
@@ -1024,8 +1061,6 @@ class TextStyle with Diagnosticable {
         inherit: b!.inherit,
         color: Color.lerp(null, b.color, t),
         backgroundColor: Color.lerp(null, b.backgroundColor, t),
-        fontFamily: t < 0.5 ? null : b.fontFamily,
-        fontFamilyFallback: t < 0.5 ? null : b.fontFamilyFallback,
         fontSize: t < 0.5 ? null : b.fontSize,
         fontWeight: FontWeight.lerp(null, b.fontWeight, t),
         fontStyle: t < 0.5 ? null : b.fontStyle,
@@ -1037,13 +1072,17 @@ class TextStyle with Diagnosticable {
         locale: t < 0.5 ? null : b.locale,
         foreground: t < 0.5 ? null : b.foreground,
         background: t < 0.5 ? null : b.background,
-        decoration: t < 0.5 ? null : b.decoration,
         shadows: t < 0.5 ? null : b.shadows,
         fontFeatures: t < 0.5 ? null : b.fontFeatures,
+        decoration: t < 0.5 ? null : b.decoration,
         decorationColor: Color.lerp(null, b.decorationColor, t),
         decorationStyle: t < 0.5 ? null : b.decorationStyle,
         decorationThickness: t < 0.5 ? null : b.decorationThickness,
         debugLabel: lerpDebugLabel,
+        fontFamily: t < 0.5 ? null : b._fontFamily,
+        fontFamilyFallback: t < 0.5 ? null : b.fontFamilyFallback,
+        package: t < 0.5 ? null : b._package,
+        overflow: t < 0.5 ? null : b.overflow,
       );
     }
 
@@ -1052,8 +1091,6 @@ class TextStyle with Diagnosticable {
         inherit: a.inherit,
         color: Color.lerp(a.color, null, t),
         backgroundColor: Color.lerp(null, a.backgroundColor, t),
-        fontFamily: t < 0.5 ? a.fontFamily : null,
-        fontFamilyFallback: t < 0.5 ? a.fontFamilyFallback : null,
         fontSize: t < 0.5 ? a.fontSize : null,
         fontWeight: FontWeight.lerp(a.fontWeight, null, t),
         fontStyle: t < 0.5 ? a.fontStyle : null,
@@ -1072,6 +1109,10 @@ class TextStyle with Diagnosticable {
         decorationStyle: t < 0.5 ? a.decorationStyle : null,
         decorationThickness: t < 0.5 ? a.decorationThickness : null,
         debugLabel: lerpDebugLabel,
+        fontFamily: t < 0.5 ? a._fontFamily : null,
+        fontFamilyFallback: t < 0.5 ? a.fontFamilyFallback : null,
+        package: t < 0.5 ? a._package : null,
+        overflow: t < 0.5 ? a.overflow : null,
       );
     }
 
@@ -1079,8 +1120,6 @@ class TextStyle with Diagnosticable {
       inherit: b.inherit,
       color: a.foreground == null && b.foreground == null ? Color.lerp(a.color, b.color, t) : null,
       backgroundColor: a.background == null && b.background == null ? Color.lerp(a.backgroundColor, b.backgroundColor, t) : null,
-      fontFamily: t < 0.5 ? a.fontFamily : b.fontFamily,
-      fontFamilyFallback: t < 0.5 ? a.fontFamilyFallback : b.fontFamilyFallback,
       fontSize: ui.lerpDouble(a.fontSize ?? b.fontSize, b.fontSize ?? a.fontSize, t),
       fontWeight: FontWeight.lerp(a.fontWeight, b.fontWeight, t),
       fontStyle: t < 0.5 ? a.fontStyle : b.fontStyle,
@@ -1107,6 +1146,10 @@ class TextStyle with Diagnosticable {
       decorationStyle: t < 0.5 ? a.decorationStyle : b.decorationStyle,
       decorationThickness: ui.lerpDouble(a.decorationThickness ?? b.decorationThickness, b.decorationThickness ?? a.decorationThickness, t),
       debugLabel: lerpDebugLabel,
+      fontFamily: t < 0.5 ? a._fontFamily : b._fontFamily,
+      fontFamilyFallback: t < 0.5 ? a.fontFamilyFallback : b.fontFamilyFallback,
+      package: t < 0.5 ? a._package : b._package,
+      overflow: t < 0.5 ? a.overflow : b.overflow,
     );
   }
 
@@ -1218,7 +1261,8 @@ class TextStyle with Diagnosticable {
         background != other.background ||
         !listEquals(shadows, other.shadows) ||
         !listEquals(fontFeatures, other.fontFeatures) ||
-        !listEquals(fontFamilyFallback, other.fontFamilyFallback))
+        !listEquals(fontFamilyFallback, other.fontFamilyFallback) ||
+        overflow != other.overflow)
       return RenderComparison.layout;
     if (color != other.color ||
         backgroundColor != other.backgroundColor ||
@@ -1240,7 +1284,6 @@ class TextStyle with Diagnosticable {
         && other.inherit == inherit
         && other.color == color
         && other.backgroundColor == backgroundColor
-        && other.fontFamily == fontFamily
         && other.fontSize == fontSize
         && other.fontWeight == fontWeight
         && other.fontStyle == fontStyle
@@ -1252,13 +1295,16 @@ class TextStyle with Diagnosticable {
         && other.locale == locale
         && other.foreground == foreground
         && other.background == background
+        && listEquals(other.shadows, shadows)
+        && listEquals(other.fontFeatures, fontFeatures)
         && other.decoration == decoration
         && other.decorationColor == decorationColor
         && other.decorationStyle == decorationStyle
         && other.decorationThickness == decorationThickness
-        && listEquals(other.shadows, shadows)
-        && listEquals(other.fontFeatures, fontFeatures)
-        && listEquals(other.fontFamilyFallback, fontFamilyFallback);
+        && other.fontFamily == fontFamily
+        && listEquals(other.fontFamilyFallback, fontFamilyFallback)
+        && other._package == _package
+        && other.overflow == overflow;
   }
 
   @override
@@ -1267,7 +1313,6 @@ class TextStyle with Diagnosticable {
       inherit,
       color,
       backgroundColor,
-      fontFamily,
       fontSize,
       fontWeight,
       fontStyle,
@@ -1279,12 +1324,16 @@ class TextStyle with Diagnosticable {
       locale,
       foreground,
       background,
+      hashList(shadows),
+      hashList(fontFeatures),
       decoration,
       decorationColor,
       decorationStyle,
-      hashList(shadows),
-      hashList(fontFeatures),
+      decorationThickness,
+      fontFamily,
       hashList(fontFamilyFallback),
+      _package,
+      overflow,
     ]);
   }
 
@@ -1329,7 +1378,7 @@ class TextStyle with Diagnosticable {
     if (decoration != null || decorationColor != null || decorationStyle != null || decorationThickness != null) {
       final List<String> decorationDescription = <String>[];
       if (decorationStyle != null)
-        decorationDescription.add(describeEnum(decorationStyle!));
+        decorationDescription.add(decorationStyle!.name);
 
       // Hide decorationColor from the default text view as it is shown in the
       // terse decoration summary as well.
@@ -1355,5 +1404,7 @@ class TextStyle with Diagnosticable {
 
     if (!styleSpecified)
       properties.add(FlagProperty('inherit', value: inherit, ifTrue: '$prefix<all styles inherited>', ifFalse: '$prefix<no style specified>'));
+
+    styles.add(EnumProperty<TextOverflow>('${prefix}overflow', overflow, defaultValue: null));
   }
 }

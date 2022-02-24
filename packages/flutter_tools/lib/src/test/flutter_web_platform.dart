@@ -12,6 +12,7 @@ import 'package:http_multi_server/http_multi_server.dart';
 import 'package:meta/meta.dart';
 import 'package:package_config/package_config.dart';
 import 'package:pool/pool.dart';
+import 'package:process/process.dart';
 import 'package:shelf/shelf.dart' as shelf;
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_static/shelf_static.dart';
@@ -51,11 +52,14 @@ class FlutterWebPlatform extends PlatformPlugin {
     @required ChromiumLauncher chromiumLauncher,
     @required Logger logger,
     @required Artifacts artifacts,
+    @required ProcessManager processManager,
+    @required Cache cache,
   }) : _fileSystem = fileSystem,
       _flutterToolPackageConfig = flutterToolPackageConfig,
       _chromiumLauncher = chromiumLauncher,
       _logger = logger,
-      _artifacts = artifacts {
+      _artifacts = artifacts,
+      _cache = cache {
     final shelf.Cascade cascade = shelf.Cascade()
         .add(_webSocketHandler.handler)
         .add(createStaticHandler(
@@ -63,6 +67,7 @@ class FlutterWebPlatform extends PlatformPlugin {
           serveFilesOutsidePath: true,
         ))
         .add(_handleStaticArtifact)
+        .add(_localCanvasKitHandler)
         .add(_goldenFileHandler)
         .add(_wrapperHandler)
         .add(_handleTestRequest)
@@ -75,6 +80,10 @@ class FlutterWebPlatform extends PlatformPlugin {
     _testGoldenComparator = TestGoldenComparator(
       shellPath,
       () => TestCompiler(buildInfo, flutterProject),
+      fileSystem: _fileSystem,
+      logger: _logger,
+      processManager: processManager,
+      webRenderer: _rendererMode,
     );
   }
 
@@ -90,6 +99,7 @@ class FlutterWebPlatform extends PlatformPlugin {
   final OneOffHandler _webSocketHandler = OneOffHandler();
   final AsyncMemoizer<void> _closeMemo = AsyncMemoizer<void>();
   final String _root;
+  final Cache _cache;
 
   /// Allows only one test suite (typically one test file) to be loaded and run
   /// at any given point in time. Loading more than one file at a time is known
@@ -111,6 +121,8 @@ class FlutterWebPlatform extends PlatformPlugin {
     @required Logger logger,
     @required ChromiumLauncher chromiumLauncher,
     @required Artifacts artifacts,
+    @required ProcessManager processManager,
+    @required Cache cache,
   }) async {
     final shelf_io.IOServer server = shelf_io.IOServer(await HttpMultiServer.loopback(0));
     final PackageConfig packageConfig = await loadPackageConfigWithLogging(
@@ -138,6 +150,8 @@ class FlutterWebPlatform extends PlatformPlugin {
       artifacts: artifacts,
       logger: logger,
       nullAssertions: nullAssertions,
+      processManager: processManager,
+      cache: cache,
     );
   }
 
@@ -173,7 +187,7 @@ class FlutterWebPlatform extends PlatformPlugin {
 
   /// The require js binary.
   File get _requireJs => _fileSystem.file(_fileSystem.path.join(
-    _artifacts.getArtifactPath(Artifact.engineDartSdkPath),
+    _artifacts.getHostArtifact(HostArtifact.engineDartSdkPath).path,
     'lib',
     'dev_compiler',
     'kernel',
@@ -183,7 +197,7 @@ class FlutterWebPlatform extends PlatformPlugin {
 
   /// The ddc to dart stack trace mapper.
   File get _stackTraceMapper => _fileSystem.file(_fileSystem.path.join(
-    _artifacts.getArtifactPath(Artifact.engineDartSdkPath),
+    _artifacts.getHostArtifact(HostArtifact.engineDartSdkPath).path,
     'lib',
     'dev_compiler',
     'web',
@@ -191,10 +205,10 @@ class FlutterWebPlatform extends PlatformPlugin {
   ));
 
   File get _dartSdk => _fileSystem.file(
-    _artifacts.getArtifactPath(kDartSdkJsArtifactMap[_rendererMode][_nullSafetyMode]));
+    _artifacts.getHostArtifact(kDartSdkJsArtifactMap[_rendererMode][_nullSafetyMode]));
 
   File get _dartSdkSourcemaps => _fileSystem.file(
-    _artifacts.getArtifactPath(kDartSdkJsMapArtifactMap[_rendererMode][_nullSafetyMode]));
+    _artifacts.getHostArtifact(kDartSdkJsMapArtifactMap[_rendererMode][_nullSafetyMode]));
 
   /// The precompiled test javascript.
   File get _testDartJs => _fileSystem.file(_fileSystem.path.join(
@@ -211,29 +225,46 @@ class FlutterWebPlatform extends PlatformPlugin {
     'host.dart.js',
   ));
 
+  File _canvasKitFile(String relativePath) {
+    // TODO(yjbanov): https://github.com/flutter/flutter/issues/52588
+    //
+    // Update this when we start building CanvasKit from sources. In the
+    // meantime, get the Web SDK directory from cache rather than through
+    // Artifacts. The latter is sensitive to `--local-engine`, which changes
+    // the directory to point to ENGINE/src/out. However, CanvasKit is not yet
+    // built as part of the engine, but fetched from CIPD, and so it won't be
+    // found in ENGINE/src/out.
+    final Directory webSdkDirectory = _cache.getWebSdkDirectory();
+    final File canvasKitFile = _fileSystem.file(_fileSystem.path.join(
+      webSdkDirectory.path,
+      relativePath,
+    ));
+    return canvasKitFile;
+  }
+
   Future<shelf.Response> _handleTestRequest(shelf.Request request) async {
     if (request.url.path.endsWith('.dart.browser_test.dart.js')) {
       final String leadingPath = request.url.path.split('.browser_test.dart.js')[0];
-      final String generatedFile = _fileSystem.path.split(leadingPath).join('_') + '.bootstrap.js';
-      return shelf.Response.ok(generateTestBootstrapFileContents('/' + generatedFile, 'require.js', 'dart_stack_trace_mapper.js'), headers: <String, String>{
+      final String generatedFile = '${_fileSystem.path.split(leadingPath).join('_')}.bootstrap.js';
+      return shelf.Response.ok(generateTestBootstrapFileContents('/$generatedFile', 'require.js', 'dart_stack_trace_mapper.js'), headers: <String, String>{
         HttpHeaders.contentTypeHeader: 'text/javascript',
       });
     }
     if (request.url.path.endsWith('.dart.bootstrap.js')) {
       final String leadingPath = request.url.path.split('.dart.bootstrap.js')[0];
-      final String generatedFile = _fileSystem.path.split(leadingPath).join('_') + '.dart.test.dart.js';
+      final String generatedFile = '${_fileSystem.path.split(leadingPath).join('_')}.dart.test.dart.js';
       return shelf.Response.ok(generateMainModule(
         nullAssertions: nullAssertions,
         nativeNullAssertions: true,
-        bootstrapModule: _fileSystem.path.basename(leadingPath) + '.dart.bootstrap',
-        entrypoint: '/' + generatedFile
+        bootstrapModule: '${_fileSystem.path.basename(leadingPath)}.dart.bootstrap',
+        entrypoint: '/$generatedFile'
        ), headers: <String, String>{
         HttpHeaders.contentTypeHeader: 'text/javascript',
       });
     }
     if (request.url.path.endsWith('.dart.js')) {
       final String path = request.url.path.split('.dart.js')[0];
-      return shelf.Response.ok(webMemoryFS.files[path + '.dart.lib.js'], headers: <String, String>{
+      return shelf.Response.ok(webMemoryFS.files['$path.dart.lib.js'], headers: <String, String>{
         HttpHeaders.contentTypeHeader: 'text/javascript',
       });
     }
@@ -358,11 +389,42 @@ class FlutterWebPlatform extends PlatformPlugin {
     }
   }
 
+  /// Serves a local build of CanvasKit, replacing the CDN build, which can
+  /// cause test flakiness due to reliance on network.
+  shelf.Response _localCanvasKitHandler(shelf.Request request) {
+    final String path = _fileSystem.path.fromUri(request.url);
+    if (!path.startsWith('canvaskit/')) {
+      return shelf.Response.notFound('Not a CanvasKit file request');
+    }
+
+    final String extension = _fileSystem.path.extension(path);
+    String contentType;
+    switch (extension) {
+      case '.js':
+        contentType = 'text/javascript';
+        break;
+      case '.wasm':
+        contentType = 'application/wasm';
+        break;
+      default:
+        final String error = 'Failed to determine Content-Type for "${request.url.path}".';
+        _logger.printError(error);
+        return shelf.Response.internalServerError(body: error);
+    }
+
+    return shelf.Response.ok(
+      _canvasKitFile(path).openRead(),
+      headers: <String, Object>{
+        HttpHeaders.contentTypeHeader: contentType,
+      },
+    );
+  }
+
   // A handler that serves wrapper files used to bootstrap tests.
   shelf.Response _wrapperHandler(shelf.Request request) {
     final String path = _fileSystem.path.fromUri(request.url);
     if (path.endsWith('.html')) {
-      final String test = _fileSystem.path.withoutExtension(path) + '.dart';
+      final String test = '${_fileSystem.path.withoutExtension(path)}.dart';
       final String scriptBase = htmlEscape.convert(_fileSystem.path.basename(test));
       final String link = '<link rel="x-dart-test" href="$scriptBase">';
       return shelf.Response.ok('''
@@ -370,6 +432,11 @@ class FlutterWebPlatform extends PlatformPlugin {
         <html>
         <head>
           <title>${htmlEscape.convert(test)} Test</title>
+          <script>
+            window.flutterConfiguration = {
+              canvasKitBaseUrl: "/canvaskit/"
+            };
+          </script>
           $link
           <script src="static/dart.js"></script>
         </head>
@@ -403,8 +470,8 @@ class FlutterWebPlatform extends PlatformPlugin {
       throw StateError('Load called on a closed FlutterWebPlatform');
     }
 
-    final Uri suiteUrl = url.resolveUri(_fileSystem.path.toUri(_fileSystem.path.withoutExtension(
-        _fileSystem.path.relative(path, from: _fileSystem.path.join(_root, 'test'))) + '.html'));
+    final String pathFromTest = _fileSystem.path.relative(path, from: _fileSystem.path.join(_root, 'test'));
+    final Uri suiteUrl = url.resolveUri(_fileSystem.path.toUri('${_fileSystem.path.withoutExtension(pathFromTest)}.html'));
     final String relativePath = _fileSystem.path.relative(_fileSystem.path.normalize(path), from: _fileSystem.currentDirectory.path);
     final RunnerSuite suite = await _browserManager.load(relativePath, suiteUrl, suiteConfig, message, onDone: () async {
       await _browserManager.close();
@@ -416,10 +483,6 @@ class FlutterWebPlatform extends PlatformPlugin {
     }
     return suite;
   }
-
-  @override
-  StreamChannel<dynamic> loadChannel(String path, SuitePlatform platform) =>
-      throw UnimplementedError();
 
   /// Returns the [BrowserManager] for [runtime], which should be a browser.
   ///
@@ -730,21 +793,24 @@ class BrowserManager {
 
   /// The callback for handling messages received from the host page.
   void _onMessage(dynamic message) {
-    switch (message['command'] as String) {
-      case 'ping':
-        break;
-      case 'restart':
-        _onRestartController.add(null);
-        break;
-      case 'resume':
-        if (_pauseCompleter != null) {
-          _pauseCompleter.complete();
-        }
-        break;
-      default:
+    assert(message is Map<String, dynamic>);
+    if (message is Map<String, dynamic>) {
+      switch (message['command'] as String) {
+        case 'ping':
+          break;
+        case 'restart':
+          _onRestartController.add(null);
+          break;
+        case 'resume':
+          if (_pauseCompleter != null) {
+            _pauseCompleter.complete();
+          }
+          break;
+        default:
         // Unreachable.
-        assert(false);
-        break;
+          assert(false);
+          break;
+      }
     }
   }
 

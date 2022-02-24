@@ -73,9 +73,7 @@ void main() {
     expect(borderRadius.bottomRight, radius2);
     expect(borderRadius.toRRect(rect), RRect.fromRectAndCorners(
       rect,
-      topLeft: Radius.zero,
       topRight: radius1,
-      bottomLeft: Radius.zero,
       bottomRight: radius2,
     ));
 
@@ -245,17 +243,13 @@ void main() {
     expect(borderRadius.bottomEnd, radius2);
     expect(borderRadius.resolve(TextDirection.ltr).toRRect(rect), RRect.fromRectAndCorners(
       rect,
-      topLeft: Radius.zero,
       topRight: radius1,
-      bottomLeft: Radius.zero,
       bottomRight: radius2,
     ));
     expect(borderRadius.resolve(TextDirection.rtl).toRRect(rect), RRect.fromRectAndCorners(
       rect,
       topLeft: radius1,
-      topRight: Radius.zero,
       bottomLeft: radius2,
-      bottomRight: Radius.zero,
     ));
 
     expect(
@@ -380,13 +374,13 @@ void main() {
       bottomStart: Radius.elliptical(120.0, 130.0),
       bottomEnd: Radius.elliptical(140.0, 150.0),
     );
-    expect((a.subtract(b)).resolve(TextDirection.ltr), BorderRadius.only(
+    expect(a.subtract(b).resolve(TextDirection.ltr), BorderRadius.only(
       topLeft: const Radius.elliptical(10.0, 20.0) - Radius.zero,
       topRight: const Radius.elliptical(30.0, 40.0) - const Radius.elliptical(100.0, 110.0),
       bottomLeft: const Radius.elliptical(50.0, 60.0) - const Radius.elliptical(120.0, 130.0),
       bottomRight: Radius.zero - const Radius.elliptical(140.0, 150.0),
     ));
-    expect((a.subtract(b)).resolve(TextDirection.rtl), BorderRadius.only(
+    expect(a.subtract(b).resolve(TextDirection.rtl), BorderRadius.only(
       topLeft: const Radius.elliptical(10.0, 20.0) - const Radius.elliptical(100.0, 110.0),
       topRight: const Radius.elliptical(30.0, 40.0) - Radius.zero,
       bottomLeft: const Radius.elliptical(50.0, 60.0) - const Radius.elliptical(140.0, 150.0),
@@ -405,13 +399,13 @@ void main() {
       bottomStart: Radius.elliptical(120.0, 130.0),
       bottomEnd: Radius.elliptical(140.0, 150.0),
     );
-    expect((a.add(b)).resolve(TextDirection.ltr), BorderRadius.only(
+    expect(a.add(b).resolve(TextDirection.ltr), BorderRadius.only(
       topLeft: const Radius.elliptical(10.0, 20.0) + Radius.zero,
       topRight: const Radius.elliptical(30.0, 40.0) + const Radius.elliptical(100.0, 110.0),
       bottomLeft: const Radius.elliptical(50.0, 60.0) + const Radius.elliptical(120.0, 130.0),
       bottomRight: Radius.zero + const Radius.elliptical(140.0, 150.0),
     ));
-    expect((a.add(b)).resolve(TextDirection.rtl), BorderRadius.only(
+    expect(a.add(b).resolve(TextDirection.rtl), BorderRadius.only(
       topLeft: const Radius.elliptical(10.0, 20.0) + const Radius.elliptical(100.0, 110.0),
       topRight: const Radius.elliptical(30.0, 40.0) + Radius.zero,
       bottomLeft: const Radius.elliptical(50.0, 60.0) + const Radius.elliptical(140.0, 150.0),
@@ -458,17 +452,14 @@ void main() {
     const BorderRadius ltr = BorderRadius.only(
       topLeft: Radius.elliptical(300.0, 500.0), // tL + 0 - 0
       topRight: Radius.elliptical(30.0, 50.0), // 0 + tE - 0
-      bottomLeft: Radius.elliptical(-3.0, -5.0), // 0 + 0 - bL
-      bottomRight: Radius.zero, // 0 + 0 - 0
+      bottomLeft: Radius.elliptical(-3.0, -5.0), // 0 + 0 - 0
     );
     const BorderRadius rtl = BorderRadius.only(
-      topLeft: Radius.elliptical(330.0, 550.0), // tL + tE - 0
-      topRight: Radius.zero, // 0 + 0 - 0
-      bottomLeft: Radius.elliptical(-3.0, -5.0), // 0 + 0 - bL
-      bottomRight: Radius.zero, // 0 + 0 - 0
+      topLeft: Radius.elliptical(330.0, 550.0), // 0 + 0 - 0
+      bottomLeft: Radius.elliptical(-3.0, -5.0), // 0 + 0 - 0
     );
-    expect((a.add(b.subtract(c))).resolve(TextDirection.ltr), ltr);
-    expect((a.add(b.subtract(c))).resolve(TextDirection.rtl), rtl);
+    expect(a.add(b.subtract(c)).resolve(TextDirection.ltr), ltr);
+    expect(a.add(b.subtract(c)).resolve(TextDirection.rtl), rtl);
   });
 
   test('BorderRadiusGeometry add and subtract, more', () {
@@ -503,8 +494,8 @@ void main() {
       bottomLeft: Radius.elliptical(783.0, 783.0), // bL + bE + bL
       bottomRight: Radius.elliptical(961.0, 961.0), // bR + bS - bR
     );
-    expect((a.add(b.subtract(c))).resolve(TextDirection.ltr), ltr);
-    expect((a.add(b.subtract(c))).resolve(TextDirection.rtl), rtl);
+    expect(a.add(b.subtract(c)).resolve(TextDirection.ltr), ltr);
+    expect(a.add(b.subtract(c)).resolve(TextDirection.rtl), rtl);
   });
 
   test('BorderRadiusGeometry operators', () {
@@ -531,10 +522,10 @@ void main() {
       bottomLeft: Radius.elliptical(95.0, 105.0), // 50,60 -> 140,150
       bottomRight: Radius.elliptical(60.0, 65.0), // 0,0 -> 120,130
     );
-    expect((a.add(b.subtract(a) * 0.5)).resolve(TextDirection.ltr), ltr);
-    expect((a.add(b.subtract(a) * 0.5)).resolve(TextDirection.rtl), rtl);
-    expect((a.add(b.subtract(a) * 0.0)).resolve(TextDirection.ltr), a);
-    expect((a.add(b.subtract(a) * 1.0)).resolve(TextDirection.rtl), b.resolve(TextDirection.rtl));
+    expect(a.add(b.subtract(a) * 0.5).resolve(TextDirection.ltr), ltr);
+    expect(a.add(b.subtract(a) * 0.5).resolve(TextDirection.rtl), rtl);
+    expect(a.add(b.subtract(a) * 0.0).resolve(TextDirection.ltr), a);
+    expect(a.add(b.subtract(a) * 1.0).resolve(TextDirection.rtl), b.resolve(TextDirection.rtl));
   });
 
   test('BorderRadius copyWith, merge, ==, hashCode basics', () {

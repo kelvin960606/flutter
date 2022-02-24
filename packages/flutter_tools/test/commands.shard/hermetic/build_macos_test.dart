@@ -45,8 +45,16 @@ final Platform macosPlatform = FakePlatform(
     'HOME': '/',
   }
 );
+
+final FakePlatform macosPlatformCustomEnv = FakePlatform(
+    operatingSystem: 'macos',
+    environment: <String, String>{
+      'FLUTTER_ROOT': '/',
+      'HOME': '/',
+    }
+);
+
 final Platform notMacosPlatform = FakePlatform(
-  operatingSystem: 'linux',
   environment: <String, String>{
     'FLUTTER_ROOT': '/',
   }
@@ -55,6 +63,8 @@ final Platform notMacosPlatform = FakePlatform(
 void main() {
   FileSystem fileSystem;
   TestUsage usage;
+  FakeProcessManager fakeProcessManager;
+  XcodeProjectInterpreter xcodeProjectInterpreter;
 
   setUpAll(() {
     Cache.disableLocking();
@@ -63,6 +73,8 @@ void main() {
   setUp(() {
     fileSystem = MemoryFileSystem.test();
     usage = TestUsage();
+    fakeProcessManager = FakeProcessManager.empty();
+    xcodeProjectInterpreter = FakeXcodeProjectInterpreter();
   });
 
   // Sets up the minimal mock project files necessary to look like a Flutter project.
@@ -119,7 +131,7 @@ void main() {
     expect(createTestCommandRunner(command).run(
       const <String>['build', 'macos', '--no-pub']
     ), throwsToolExit(message: 'No macOS desktop project configured. See '
-      'https://flutter.dev/desktop#add-desktop-support-to-an-existing-flutter-app '
+      'https://docs.flutter.dev/desktop#add-desktop-support-to-an-existing-flutter-app '
       'to learn about adding macOS support to a project.'));
   }, overrides: <Type, Generator>{
     Platform: () => macosPlatform,
@@ -131,18 +143,33 @@ void main() {
   testUsingContext('macOS build fails on non-macOS platform', () async {
     final BuildCommand command = BuildCommand();
     fileSystem.file('pubspec.yaml').createSync();
-    fileSystem.file('.packages').createSync();
     fileSystem.file(fileSystem.path.join('lib', 'main.dart'))
       .createSync(recursive: true);
 
     expect(createTestCommandRunner(command).run(
       const <String>['build', 'macos', '--no-pub']
-    ), throwsToolExit());
+    ), throwsA(isA<UsageException>()));
   }, overrides: <Type, Generator>{
     Platform: () => notMacosPlatform,
     FileSystem: () => fileSystem,
     ProcessManager: () => FakeProcessManager.any(),
     FeatureFlags: () => TestFeatureFlags(isMacOSEnabled: true),
+  });
+
+  testUsingContext('macOS build fails when feature is disabled', () async {
+    final BuildCommand command = BuildCommand();
+    fileSystem.file('pubspec.yaml').createSync();
+    fileSystem.file(fileSystem.path.join('lib', 'main.dart'))
+        .createSync(recursive: true);
+
+    expect(createTestCommandRunner(command).run(
+        const <String>['build', 'macos', '--no-pub']
+    ), throwsToolExit(message: '"build macos" is not currently supported. To enable, run "flutter config --enable-macos-desktop".'));
+  }, overrides: <Type, Generator>{
+    Platform: () => macosPlatform,
+    FileSystem: () => fileSystem,
+    ProcessManager: () => FakeProcessManager.any(),
+    FeatureFlags: () => TestFeatureFlags(),
   });
 
   testUsingContext('macOS build forwards error stdout to status logger error', () async {
@@ -286,6 +313,50 @@ void main() {
     Artifacts: () => Artifacts.test(),
   });
 
+  testUsingContext('build settings contains Flutter Xcode environment variables', () async {
+
+    macosPlatformCustomEnv.environment = Map<String, String>.unmodifiable(<String, String>{
+      'FLUTTER_XCODE_ASSETCATALOG_COMPILER_APPICON_NAME': 'AppIcon.special'
+    });
+
+    final FlutterProject flutterProject = FlutterProject.fromDirectory(fileSystem.currentDirectory);
+    final Directory flutterBuildDir = fileSystem.directory(getMacOSBuildDirectory());
+
+    fakeProcessManager.addCommands(<FakeCommand>[
+      FakeCommand(
+        command: <String>[
+          '/usr/bin/env',
+          'xcrun',
+          'xcodebuild',
+          '-workspace', flutterProject.macos.xcodeWorkspace.path,
+          '-configuration', 'Debug',
+          '-scheme', 'Runner',
+          '-derivedDataPath', flutterBuildDir.absolute.path,
+          'OBJROOT=${fileSystem.path.join(flutterBuildDir.absolute.path, 'Build', 'Intermediates.noindex')}',
+          'SYMROOT=${fileSystem.path.join(flutterBuildDir.absolute.path, 'Build', 'Products')}',
+          '-quiet',
+          'COMPILER_INDEX_STORE_ENABLE=NO',
+          'ASSETCATALOG_COMPILER_APPICON_NAME=AppIcon.special',
+        ],
+      ),
+    ]);
+
+    final BuildCommand command = BuildCommand();
+    createMinimalMockProjectFiles();
+
+    await createTestCommandRunner(command).run(
+        const <String>['build', 'macos', '--debug', '--no-pub']
+    );
+
+    expect(fakeProcessManager.hasRemainingExpectations, isFalse);
+  }, overrides: <Type, Generator>{
+    FileSystem: () => fileSystem,
+    ProcessManager: () => fakeProcessManager,
+    Platform: () => macosPlatformCustomEnv,
+    FeatureFlags: () => TestFeatureFlags(isMacOSEnabled: true),
+    XcodeProjectInterpreter: () => xcodeProjectInterpreter,
+  });
+
   testUsingContext('macOS build supports build-name and build-number', () async {
     final BuildCommand command = BuildCommand();
     createMinimalMockProjectFiles();
@@ -318,16 +389,17 @@ void main() {
   testUsingContext('Refuses to build for macOS when feature is disabled', () {
     final CommandRunner<void> runner = createTestCommandRunner(BuildCommand());
 
+    final bool supported = BuildMacosCommand(verboseHelp: false).supported;
     expect(() => runner.run(<String>['build', 'macos', '--no-pub']),
-      throwsToolExit());
+      supported ? throwsToolExit() : throwsA(isA<UsageException>()));
   }, overrides: <Type, Generator>{
-    FeatureFlags: () => TestFeatureFlags(isMacOSEnabled: false),
+    FeatureFlags: () => TestFeatureFlags(),
   });
 
   testUsingContext('hidden when not enabled on macOS host', () {
     expect(BuildMacosCommand(verboseHelp: false).hidden, true);
   }, overrides: <Type, Generator>{
-    FeatureFlags: () => TestFeatureFlags(isMacOSEnabled: false),
+    FeatureFlags: () => TestFeatureFlags(),
     Platform: () => macosPlatform,
   });
 

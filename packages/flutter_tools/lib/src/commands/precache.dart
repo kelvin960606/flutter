@@ -50,6 +50,8 @@ class PrecacheCommand extends FlutterCommand {
         help: 'Precache artifacts for Linux desktop development.');
     argParser.addFlag('windows', negatable: true, defaultsTo: false,
         help: 'Precache artifacts for Windows desktop development.');
+    argParser.addFlag('winuwp', negatable: true, defaultsTo: false,
+        help: 'Precache artifacts for Windows UWP desktop development.');
     argParser.addFlag('macos', negatable: true, defaultsTo: false,
         help: 'Precache artifacts for macOS desktop development.');
     argParser.addFlag('fuchsia', negatable: true, defaultsTo: false,
@@ -74,6 +76,9 @@ class PrecacheCommand extends FlutterCommand {
   final String description = "Populate the Flutter tool's cache of binary artifacts.\n\n"
     'If no explicit platform flags are provided, this command will download the artifacts '
     'for all currently enabled platforms';
+
+  @override
+  final String category = FlutterCommandCategory.sdk;
 
   @override
   bool get shouldUpdateCache => false;

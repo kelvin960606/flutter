@@ -38,33 +38,14 @@ enum _SliderType { material, adaptive }
 ///
 /// {@youtube 560 315 https://www.youtube.com/watch?v=ufb4gIPDmEs}
 ///
-/// {@tool dartpad --template=stateful_widget_scaffold}
-///
+/// {@tool dartpad}
 /// ![A slider widget, consisting of 5 divisions and showing the default value
 /// indicator.](https://flutter.github.io/assets-for-api-docs/assets/material/slider.png)
 ///
 /// The Sliders value is part of the Stateful widget subclass to change the value
 /// setState was called.
 ///
-/// ```dart
-/// double _currentSliderValue = 20;
-///
-/// @override
-/// Widget build(BuildContext context) {
-///   return Slider(
-///     value: _currentSliderValue,
-///     min: 0,
-///     max: 100,
-///     divisions: 5,
-///     label: _currentSliderValue.round().toString(),
-///     onChanged: (double value) {
-///       setState(() {
-///         _currentSliderValue = value;
-///       });
-///     },
-///   );
-/// }
-/// ```
+/// ** See code in examples/api/lib/material/slider/slider.0.dart **
 /// {@end-tool}
 ///
 /// A slider can be used to select from either a continuous or a discrete set of
@@ -153,6 +134,7 @@ class Slider extends StatefulWidget {
     this.label,
     this.activeColor,
     this.inactiveColor,
+    this.thumbColor,
     this.mouseCursor,
     this.semanticFormatterCallback,
     this.focusNode,
@@ -190,6 +172,7 @@ class Slider extends StatefulWidget {
     this.mouseCursor,
     this.activeColor,
     this.inactiveColor,
+    this.thumbColor,
     this.semanticFormatterCallback,
     this.focusNode,
     this.autofocus = false,
@@ -382,6 +365,14 @@ class Slider extends StatefulWidget {
   /// Ignored if this slider is created with [Slider.adaptive].
   final Color? inactiveColor;
 
+  /// The color of the thumb.
+  ///
+  /// If this color is null:
+  /// * [Slider] will use [activeColor].
+  /// * [CupertinoSlider] will have a white thumb
+  /// (like the native default iOS slider).
+  final Color? thumbColor;
+
   /// The cursor for a mouse pointer when it enters or is hovering over the
   /// widget.
   ///
@@ -437,7 +428,7 @@ class Slider extends StatefulWidget {
   final _SliderType _sliderType ;
 
   @override
-  _SliderState createState() => _SliderState();
+  State<Slider> createState() => _SliderState();
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
@@ -477,13 +468,21 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
 
   final GlobalKey _renderObjectKey = GlobalKey();
   // Keyboard mapping for a focused slider.
-  late Map<LogicalKeySet, Intent> _shortcutMap;
+  final Map<ShortcutActivator, Intent> _shortcutMap = const <ShortcutActivator, Intent>{
+      SingleActivator(LogicalKeyboardKey.arrowUp): _AdjustSliderIntent.up(),
+      SingleActivator(LogicalKeyboardKey.arrowDown): _AdjustSliderIntent.down(),
+      SingleActivator(LogicalKeyboardKey.arrowLeft): _AdjustSliderIntent.left(),
+      SingleActivator(LogicalKeyboardKey.arrowRight): _AdjustSliderIntent.right(),
+    };
   // Action mapping for a focused slider.
   late Map<Type, Action<Intent>> _actionMap;
 
   bool get _enabled => widget.onChanged != null;
   // Value Indicator Animation that appears on the Overlay.
   PaintValueIndicator? paintValueIndicator;
+
+  FocusNode? _focusNode;
+  FocusNode get focusNode => widget.focusNode ?? _focusNode!;
 
   @override
   void initState() {
@@ -506,17 +505,15 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
     );
     enableController.value = widget.onChanged != null ? 1.0 : 0.0;
     positionController.value = _unlerp(widget.value);
-    _shortcutMap = <LogicalKeySet, Intent>{
-      LogicalKeySet(LogicalKeyboardKey.arrowUp): const _AdjustSliderIntent.up(),
-      LogicalKeySet(LogicalKeyboardKey.arrowDown): const _AdjustSliderIntent.down(),
-      LogicalKeySet(LogicalKeyboardKey.arrowLeft): const _AdjustSliderIntent.left(),
-      LogicalKeySet(LogicalKeyboardKey.arrowRight): const _AdjustSliderIntent.right(),
-    };
     _actionMap = <Type, Action<Intent>>{
       _AdjustSliderIntent: CallbackAction<_AdjustSliderIntent>(
         onInvoke: _actionHandler,
       ),
     };
+    if (widget.focusNode == null) {
+      // Only create a new node if the widget doesn't have one.
+      _focusNode ??= FocusNode();
+    }
   }
 
   @override
@@ -530,6 +527,7 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
       overlayEntry!.remove();
       overlayEntry = null;
     }
+    _focusNode?.dispose();
     super.dispose();
   }
 
@@ -680,7 +678,7 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
       inactiveTickMarkColor: widget.activeColor ?? sliderTheme.inactiveTickMarkColor ?? theme.colorScheme.primary.withOpacity(0.54),
       disabledActiveTickMarkColor: sliderTheme.disabledActiveTickMarkColor ?? theme.colorScheme.onPrimary.withOpacity(0.12),
       disabledInactiveTickMarkColor: sliderTheme.disabledInactiveTickMarkColor ?? theme.colorScheme.onSurface.withOpacity(0.12),
-      thumbColor: widget.activeColor ?? sliderTheme.thumbColor ?? theme.colorScheme.primary,
+      thumbColor: widget.thumbColor ?? widget.activeColor ?? sliderTheme.thumbColor ?? theme.colorScheme.primary,
       disabledThumbColor: sliderTheme.disabledThumbColor ?? Color.alphaBlend(theme.colorScheme.onSurface.withOpacity(.38), theme.colorScheme.surface),
       overlayColor: widget.activeColor?.withOpacity(0.12) ?? sliderTheme.overlayColor ?? theme.colorScheme.primary.withOpacity(0.12),
       valueIndicatorColor: valueIndicatorColor,
@@ -708,13 +706,32 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
     // in range_slider.dart.
     Size _screenSize() => MediaQuery.of(context).size;
 
+    VoidCallback? handleDidGainAccessibilityFocus;
+    switch (theme.platform) {
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.iOS:
+      case TargetPlatform.linux:
+      case TargetPlatform.macOS:
+        break;
+      case TargetPlatform.windows:
+        handleDidGainAccessibilityFocus = () {
+          // Automatically activate the slider when it receives a11y focus.
+          if (!focusNode.hasFocus && focusNode.canRequestFocus) {
+            focusNode.requestFocus();
+          }
+        };
+        break;
+    }
+
     return Semantics(
       container: true,
       slider: true,
+      onDidGainAccessibilityFocus: handleDidGainAccessibilityFocus,
       child: FocusableActionDetector(
         actions: _actionMap,
         shortcuts: _shortcutMap,
-        focusNode: widget.focusNode,
+        focusNode: focusNode,
         autofocus: widget.autofocus,
         enabled: _enabled,
         onShowFocusHighlight: _handleFocusHighlightChanged,
@@ -758,6 +775,7 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
         max: widget.max,
         divisions: widget.divisions,
         activeColor: widget.activeColor,
+        thumbColor: widget.thumbColor ?? CupertinoColors.white,
       ),
     );
   }
@@ -904,8 +922,7 @@ class _RenderSlider extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
     _tap = TapGestureRecognizer()
       ..team = team
       ..onTapDown = _handleTapDown
-      ..onTapUp = _handleTapUp
-      ..onTapCancel = _endInteraction;
+      ..onTapUp = _handleTapUp;
     _overlayAnimation = CurvedAnimation(
       parent: _state.overlayController,
       curve: Curves.fastOutSlowIn,
@@ -957,7 +974,6 @@ class _RenderSlider extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
   // (0,0).
   Rect get _trackRect => _sliderTheme.trackShape!.getPreferredRect(
     parentBox: this,
-    offset: Offset.zero,
     sliderTheme: _sliderTheme,
     isDiscrete: false,
   );
@@ -1225,7 +1241,7 @@ class _RenderSlider extends RenderBox with RelayoutWhenSystemFontsChangeMixin {
 
   void _startInteraction(Offset globalPosition) {
     _state.showValueIndicator();
-    if (isInteractive) {
+    if (!_active && isInteractive) {
       _active = true;
       // We supply the *current* value as the start location, so that if we have
       // a tap, it consists of a call to onChangeStart with the previous value and

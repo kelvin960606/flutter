@@ -60,7 +60,7 @@ typedef _BucketVisitor = void Function(RestorationBucket bucket);
 /// to the notification, listeners must stop using the old bucket and restore
 /// their state from the information in the new [rootBucket].
 ///
-/// Same platforms restrict the size of the restoration data. Therefore, the
+/// Some platforms restrict the size of the restoration data. Therefore, the
 /// data stored in the buckets should be as small as possible while still
 /// allowing the app to restore its current state from it. Data that can be
 /// retrieved from other services (e.g. a database or a web server) should not
@@ -166,7 +166,6 @@ class RestorationManager extends ChangeNotifier {
   /// that communications channel, or to set it up differently, as necessary.
   @protected
   void initChannels() {
-    assert(!SystemChannels.restoration.checkMethodCallHandler(_methodHandler));
     SystemChannels.restoration.setMethodCallHandler(_methodHandler);
   }
 
@@ -305,7 +304,7 @@ class RestorationManager extends ChangeNotifier {
     );
   }
 
-  Future<Object?> _methodHandler(MethodCall call) async {
+  Future<void> _methodHandler(MethodCall call) async {
     switch (call.method) {
       case 'push':
         _parseAndHandleRestorationUpdateFromEngine(call.arguments as Map<Object?, Object?>);
@@ -1007,7 +1006,9 @@ bool debugIsSerializableForRestoration(Object? object) {
     try {
       const StandardMessageCodec().encodeMessage(object);
       result = true;
-    } catch (_) {
+    } catch (error) {
+      // This is only used in asserts, so reporting the exception isn't
+      // particularly useful, since the assert itself will likely fail.
       result = false;
     }
     return true;

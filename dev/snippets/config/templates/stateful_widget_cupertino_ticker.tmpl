@@ -1,5 +1,5 @@
-/// Flutter code sample for {{element}}
-
+// Flutter code sample for {{element}}
+//
 {{description}}
 
 {{code-dartImports}}
@@ -31,11 +31,11 @@ class MyStatefulWidget extends StatefulWidget {
   const MyStatefulWidget({Key? key}) : super(key: key);
 
   @override
-  _MyStatefulWidgetState createState() => _MyStatefulWidgetState();
+  State<MyStatefulWidget> createState() => _MyStatefulWidgetState();
 }
 
 /// This is the private State class that goes with MyStatefulWidget.
 /// AnimationControllers can be created with `vsync: this` because of TickerProviderStateMixin.
 class _MyStatefulWidgetState extends State<MyStatefulWidget> with TickerProviderStateMixin {
-  {{code}}
+{{code}}
 }

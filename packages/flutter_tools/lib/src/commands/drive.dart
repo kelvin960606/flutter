@@ -21,7 +21,8 @@ import '../dart/package_map.dart';
 import '../device.dart';
 import '../drive/drive_service.dart';
 import '../globals.dart' as globals;
-import '../runner/flutter_command.dart' show FlutterCommandResult, FlutterOptions;
+import '../resident_runner.dart';
+import '../runner/flutter_command.dart' show FlutterCommandCategory, FlutterCommandResult, FlutterOptions;
 import '../web/web_device.dart';
 import 'run.dart';
 
@@ -64,6 +65,7 @@ class DriveCommand extends RunCommandBase {
     // to prevent a local network permission dialog on iOS 14+,
     // which cannot be accepted or dismissed in a CI environment.
     addPublishPort(enabledByDefault: false, verboseHelp: verboseHelp);
+    addMultidexOption();
     argParser
       ..addFlag('keep-app-running',
         defaultsTo: null,
@@ -143,7 +145,10 @@ class DriveCommand extends RunCommandBase {
         help: 'Attempts to write an SkSL file when the drive process is finished '
               'to the provided file, overwriting it if necessary.')
       ..addMultiOption('test-arguments', help: 'Additional arguments to pass to the '
-          'Dart VM running The test script.');
+          'Dart VM running The test script.')
+      ..addOption('profile-memory', help: 'Launch devtools and profile application memory, writing '
+          'The output data to the file path provided to this argument as JSON.',
+          valueHelp: 'profile_memory.json');
   }
 
   // `pub` must always be run due to the test script running from source,
@@ -167,6 +172,9 @@ class DriveCommand extends RunCommandBase {
 
   @override
   final String description = 'Run integration tests for the project on an attached device or emulator.';
+
+  @override
+  String get category => FlutterCommandCategory.project;
 
   @override
   final List<String> aliases = <String>['driver'];
@@ -214,7 +222,8 @@ class DriveCommand extends RunCommandBase {
       applicationPackageFactory: ApplicationPackageFactory.instance,
       logger: _logger,
       processUtils: globals.processUtils,
-      dartSdkPath: globals.artifacts.getArtifactPath(Artifact.engineDartBinary),
+      dartSdkPath: globals.artifacts.getHostArtifact(HostArtifact.engineDartBinary).path,
+      devtoolsLauncher: DevtoolsLauncher.instance,
     );
     final PackageConfig packageConfig = await loadPackageConfigWithLogging(
       _fileSystem.file('.packages'),
@@ -243,6 +252,8 @@ class DriveCommand extends RunCommandBase {
             'trace-startup': traceStartup,
           if (web)
             '--no-launch-chrome': true,
+          if (boolArg('multidex'))
+            'multidex': true,
         }
       );
     } else {
@@ -271,6 +282,7 @@ class DriveCommand extends RunCommandBase {
         ? int.tryParse(stringArg('driver-port'))
         : null,
       androidEmulator: boolArg('android-emulator'),
+      profileMemory: stringArg('profile-memory'),
     );
     if (testResult != 0 && screenshot != null) {
       await takeScreenshot(device, screenshot, _fileSystem, _logger, _fsUtils);

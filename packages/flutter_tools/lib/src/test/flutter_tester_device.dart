@@ -16,6 +16,7 @@ import '../base/common.dart';
 import '../base/file_system.dart';
 import '../base/io.dart';
 import '../base/logger.dart';
+import '../base/os.dart';
 import '../base/platform.dart';
 import '../convert.dart';
 import '../device.dart';
@@ -46,7 +47,13 @@ class FlutterTesterTestDevice extends TestDevice {
   })  : assert(shellPath != null), // Please provide the path to the shell in the SKY_SHELL environment variable.
         assert(!debuggingOptions.startPaused || enableObservatory),
         _gotProcessObservatoryUri = enableObservatory
-            ? Completer<Uri>() : (Completer<Uri>()..complete(null));
+            ? Completer<Uri>() : (Completer<Uri>()..complete(null)),
+        _operatingSystemUtils = OperatingSystemUtils(
+          fileSystem: fileSystem,
+          logger: logger,
+          platform: platform,
+          processManager: processManager,
+        );
 
   /// Used for logging to identify the test that is currently being executed.
   final int id;
@@ -70,6 +77,7 @@ class FlutterTesterTestDevice extends TestDevice {
 
   Process _process;
   HttpServer _server;
+  final OperatingSystemUtils _operatingSystemUtils;
 
   /// Starts the device.
   ///
@@ -87,6 +95,13 @@ class FlutterTesterTestDevice extends TestDevice {
     logger.printTrace('test $id: test harness socket server is running at port:${_server.port}');
 
     final List<String> command = <String>[
+      // Until an arm64 flutter tester binary is available, force to run in Rosetta
+      // to avoid "unexpectedly got a signal in sigtramp" crash.
+      // https://github.com/flutter/flutter/issues/88106
+      if (_operatingSystemUtils.hostPlatform == HostPlatform.darwin_arm) ...<String>[
+        '/usr/bin/arch',
+        '-x86_64',
+      ],
       shellPath,
       if (enableObservatory) ...<String>[
         // Some systems drive the _FlutterPlatform class in an unusual way, where
@@ -98,7 +113,7 @@ class FlutterTesterTestDevice extends TestDevice {
         //
         // I mention this only so that you won't be tempted, as I was, to apply
         // the obvious simplification to this code and remove this entire feature.
-        '--observatory-port=${debuggingOptions.disableDds ? debuggingOptions.hostVmServicePort: 0}',
+        '--observatory-port=${debuggingOptions.enableDds ? 0 : debuggingOptions.hostVmServicePort }',
         if (debuggingOptions.startPaused) '--start-paused',
         if (debuggingOptions.disableServiceAuthCodes) '--disable-service-auth-codes',
       ]
@@ -158,7 +173,7 @@ class FlutterTesterTestDevice extends TestDevice {
             debuggingOptions.hostVmServicePort == detectedUri.port);
 
         Uri forwardingUri;
-        if (!debuggingOptions.disableDds) {
+        if (debuggingOptions.enableDds) {
           logger.printTrace('test $id: Starting Dart Development Service');
           final DartDevelopmentService dds = await startDds(detectedUri);
           forwardingUri = dds.uri;

@@ -17,7 +17,7 @@ class CupertinoPickerDemo extends StatefulWidget {
   static const String routeName = '/cupertino/picker';
 
   @override
-  _CupertinoPickerDemoState createState() => _CupertinoPickerDemoState();
+  State<CupertinoPickerDemo> createState() => _CupertinoPickerDemoState();
 }
 
 class _BottomPicker extends StatelessWidget {
@@ -247,7 +247,6 @@ class _CupertinoPickerDemoState extends State<CupertinoPickerDemo> {
             return _BottomPicker(
               child: CupertinoDatePicker(
                 backgroundColor: CupertinoColors.systemBackground.resolveFrom(context),
-                mode: CupertinoDatePickerMode.dateAndTime,
                 initialDateTime: dateTime,
                 onDateTimeChanged: (DateTime newDateTime) {
                   setState(() => dateTime = newDateTime);

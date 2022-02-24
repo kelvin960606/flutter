@@ -43,75 +43,11 @@ import 'theme.dart';
 /// If your application does not have a [Drawer], you should provide an
 /// affordance to call [showAboutDialog] or (at least) [showLicensePage].
 ///
-/// {@tool dartpad --template=stateless_widget_material}
-///
+/// {@tool dartpad}
 /// This sample shows two ways to open [AboutDialog]. The first one
 /// uses an [AboutListTile], and the second uses the [showAboutDialog] function.
 ///
-/// ```dart
-///  Widget build(BuildContext context) {
-///    final ThemeData theme = Theme.of(context);
-///    final TextStyle textStyle = theme.textTheme.bodyText2!;
-///    final List<Widget> aboutBoxChildren = <Widget>[
-///      const SizedBox(height: 24),
-///      RichText(
-///        text: TextSpan(
-///          children: <TextSpan>[
-///            TextSpan(
-///              style: textStyle,
-///              text: "Flutter is Google's UI toolkit for building beautiful, "
-///              'natively compiled applications for mobile, web, and desktop '
-///              'from a single codebase. Learn more about Flutter at '
-///            ),
-///            TextSpan(
-///              style: textStyle.copyWith(color: theme.colorScheme.primary),
-///              text: 'https://flutter.dev'
-///            ),
-///            TextSpan(
-///              style: textStyle,
-///              text: '.'
-///            ),
-///          ],
-///        ),
-///      ),
-///    ];
-///
-///    return Scaffold(
-///      appBar: AppBar(
-///        title: const Text('Show About Example'),
-///      ),
-///      drawer: Drawer(
-///        child: SingleChildScrollView(
-///          child: SafeArea(
-///            child: AboutListTile(
-///              icon: const Icon(Icons.info),
-///              applicationIcon: const FlutterLogo(),
-///              applicationName: 'Show About Example',
-///              applicationVersion: 'August 2019',
-///              applicationLegalese: '\u{a9} 2014 The Flutter Authors',
-///              aboutBoxChildren: aboutBoxChildren,
-///            ),
-///          ),
-///        ),
-///      ),
-///      body: Center(
-///        child: ElevatedButton(
-///          child: const Text('Show About Example'),
-///          onPressed: () {
-///            showAboutDialog(
-///              context: context,
-///              applicationIcon: const FlutterLogo(),
-///              applicationName: 'Show About Example',
-///              applicationVersion: 'August 2019',
-///              applicationLegalese: '\u{a9} 2014 The Flutter Authors',
-///              children: aboutBoxChildren,
-///            );
-///          },
-///        ),
-///      ),
-///    );
-/// }
-/// ```
+/// ** See code in examples/api/lib/material/about/about_list_tile.0.dart **
 /// {@end-tool}
 class AboutListTile extends StatelessWidget {
   /// Creates a list tile for showing an about box.
@@ -189,7 +125,7 @@ class AboutListTile extends StatelessWidget {
 
   /// Whether this list tile is part of a vertically dense list.
   ///
-  /// If this property is null, then its value is based on [ListTileTheme.dense].
+  /// If this property is null, then its value is based on [ListTileThemeData.dense].
   ///
   /// Dense list tiles default to a smaller height.
   final bool? dense;
@@ -482,7 +418,7 @@ class LicensePage extends StatefulWidget {
   final String? applicationLegalese;
 
   @override
-  _LicensePageState createState() => _LicensePageState();
+  State<LicensePage> createState() => _LicensePageState();
 }
 
 class _LicensePageState extends State<LicensePage> {
@@ -630,11 +566,12 @@ class _PackagesViewState extends State<_PackagesView> {
                     );
                   },
                 );
-              default:
+              case ConnectionState.none:
+              case ConnectionState.active:
+              case ConnectionState.waiting:
                 return Material(
                     color: Theme.of(context).cardColor,
                     child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
                     children: <Widget>[
                       widget.about,
                       const Center(child: CircularProgressIndicator()),
@@ -675,23 +612,23 @@ class _PackagesViewState extends State<_PackagesView> {
             .asMap()
             .entries
             .map<Widget>((MapEntry<int, String> entry) {
-          final String packageName = entry.value;
-          final int index = entry.key;
-          final List<int> bindings = data.packageLicenseBindings[packageName]!;
-          return _PackageListTile(
-            packageName: packageName,
-            index: index,
-            isSelected: drawSelection && entry.key == (selectedId ?? 0),
-            numberLicenses: bindings.length,
-            onTap: () {
-              widget.selectedId.value = index;
-              _MasterDetailFlow.of(context)!.openDetailPage(_DetailArguments(
-                packageName,
-                bindings.map((int i) => data.licenses[i]).toList(growable: false),
-              ));
-            },
-          );
-        }),
+              final String packageName = entry.value;
+              final int index = entry.key;
+              final List<int> bindings = data.packageLicenseBindings[packageName]!;
+              return _PackageListTile(
+                packageName: packageName,
+                index: index,
+                isSelected: drawSelection && entry.key == (selectedId ?? 0),
+                numberLicenses: bindings.length,
+                onTap: () {
+                  widget.selectedId.value = index;
+                  _MasterDetailFlow.of(context)!.openDetailPage(_DetailArguments(
+                    packageName,
+                    bindings.map((int i) => data.licenses[i]).toList(growable: false),
+                  ));
+                },
+              );
+            }),
       ],
     );
   }
@@ -798,7 +735,7 @@ class _DetailArguments {
   }
 
   @override
-  int get hashCode => packageName.hashCode; // Good enough.
+  int get hashCode => hashValues(packageName, hashList(licenseEntries));
 }
 
 class _PackageLicensePage extends StatefulWidget {
@@ -925,8 +862,12 @@ class _PackageLicensePageState extends State<_PackageLicensePage> {
               child: Localizations.override(
                 locale: const Locale('en', 'US'),
                 context: context,
-                child: Scrollbar(
-                  child: ListView(padding: padding, children: listWidgets),
+                child: ScrollConfiguration(
+                  // A Scrollbar is built-in below.
+                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                  child: Scrollbar(
+                    child: ListView(padding: padding, children: listWidgets),
+                  ),
                 ),
               ),
             ),
@@ -1415,7 +1356,7 @@ class _MasterPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      return Scaffold(
+    return Scaffold(
         appBar: AppBar(
           title: title,
           leading: leading,
@@ -1530,7 +1471,6 @@ class _MasterDetailScaffoldState extends State<_MasterDetailScaffold>
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(kToolbarHeight),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
                 children: <Widget>[
                   ConstrainedBox(
                     constraints: BoxConstraints.tightFor(width: masterViewWidth),
@@ -1636,7 +1576,6 @@ class _DetailView extends StatelessWidget {
     return DraggableScrollableSheet(
       initialChildSize: minHeight,
       minChildSize: minHeight,
-      maxChildSize: 1,
       expand: false,
       builder: (BuildContext context, ScrollController controller) {
         return MouseRegion(
@@ -1647,7 +1586,7 @@ class _DetailView extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             margin: const EdgeInsets.fromLTRB(_kCardElevation, 0.0, _kCardElevation, 0.0),
             shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(3.0), bottom: Radius.zero),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(3.0)),
             ),
             child: _builder(
               context,

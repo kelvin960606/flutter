@@ -5,9 +5,9 @@
 import 'dart:developer';
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/gestures.dart' show DragStartBehavior;
 
 import 'backdrop.dart';
 import 'demos.dart';
@@ -58,14 +58,12 @@ class _CategoryItem extends StatelessWidget {
     // repainted when the button's ink splash animates.
     return RepaintBoundary(
       child: RawMaterialButton(
-        padding: EdgeInsets.zero,
         hoverColor: theme.primaryColor.withOpacity(0.05),
         splashColor: theme.primaryColor.withOpacity(0.12),
         highlightColor: Colors.transparent,
         onPressed: onTap,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.all(6.0),
@@ -184,7 +182,6 @@ class _DemoItem extends StatelessWidget {
     final bool isDark = theme.brightness == Brightness.dark;
     final double textScaleFactor = MediaQuery.textScaleFactorOf(context);
     return RawMaterialButton(
-      padding: EdgeInsets.zero,
       splashColor: theme.primaryColor.withOpacity(0.12),
       highlightColor: Colors.transparent,
       onPressed: () {
@@ -278,7 +275,7 @@ class GalleryHome extends StatefulWidget {
   static bool showPreviewBanner = true;
 
   @override
-  _GalleryHomeState createState() => _GalleryHomeState();
+  State<GalleryHome> createState() => _GalleryHomeState();
 }
 
 class _GalleryHomeState extends State<GalleryHome> with SingleTickerProviderStateMixin {
@@ -288,11 +285,11 @@ class _GalleryHomeState extends State<GalleryHome> with SingleTickerProviderStat
 
   static Widget _topHomeLayout(Widget? currentChild, List<Widget> previousChildren) {
     return Stack(
+      alignment: Alignment.topCenter,
       children: <Widget>[
         ...previousChildren,
         if (currentChild != null) currentChild,
       ],
-      alignment: Alignment.topCenter,
     );
   }
 
@@ -400,8 +397,8 @@ class _GalleryHomeState extends State<GalleryHome> with SingleTickerProviderStat
       );
     }
     home = AnnotatedRegion<SystemUiOverlayStyle>(
-      child: home,
       value: SystemUiOverlayStyle.light,
+      child: home,
     );
 
     return home;

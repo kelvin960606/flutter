@@ -10,9 +10,8 @@ import 'package:flutter_tools/src/base/file_system.dart';
 import 'package:flutter_tools/src/base/io.dart';
 import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/commands/shell_completion.dart';
-import 'package:flutter_tools/src/globals_null_migrated.dart' as globals;
+import 'package:flutter_tools/src/globals.dart' as globals;
 
-import '../../src/common.dart';
 import '../../src/context.dart';
 import '../../src/fakes.dart';
 import '../../src/test_flutter_command_runner.dart';
@@ -32,6 +31,8 @@ void main() {
       expect(fakeStdio.writtenToStdout.length, equals(1));
       expect(fakeStdio.writtenToStdout.first, contains('__flutter_completion'));
     }, overrides: <Type, Generator>{
+      FileSystem: () => MemoryFileSystem.test(),
+      ProcessManager: () => FakeProcessManager.any(),
       Stdio: () => fakeStdio,
     });
 
@@ -41,6 +42,8 @@ void main() {
       expect(fakeStdio.writtenToStdout.length, equals(1));
       expect(fakeStdio.writtenToStdout.first, contains('__flutter_completion'));
     }, overrides: <Type, Generator>{
+      FileSystem: () => MemoryFileSystem.test(),
+      ProcessManager: () => FakeProcessManager.any(),
       Stdio: () => fakeStdio,
     });
 
@@ -62,15 +65,16 @@ void main() {
       final ShellCompletionCommand command = ShellCompletionCommand();
       const String outputFile = 'bash-setup.sh';
       globals.fs.file(outputFile).createSync();
-      try {
-        await createTestCommandRunner(command).run(
+      await expectLater(
+        () => createTestCommandRunner(command).run(
           <String>['bash-completion', outputFile],
-        );
-        fail('Expect ToolExit exception');
-      } on ToolExit catch (error) {
-        expect(error.exitCode ?? 1, 1);
-        expect(error.message, contains('Use --overwrite'));
-      }
+        ),
+        throwsA(
+          isA<ToolExit>()
+            .having((ToolExit error) => error.exitCode, 'exitCode', anyOf(isNull, 1))
+            .having((ToolExit error) => error.message, 'message', contains('Use --overwrite')),
+        ),
+      );
       expect(globals.fs.isFileSync(outputFile), isTrue);
       expect(globals.fs.file(outputFile).readAsStringSync(), isEmpty);
     }, overrides: <Type, Generator>{

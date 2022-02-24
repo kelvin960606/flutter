@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/base/config.dart';
 import 'package:flutter_tools/src/base/error_handling_io.dart';
@@ -16,14 +14,13 @@ import 'package:test/fake.dart';
 import '../src/common.dart';
 
 void main() {
-  Config config;
-  MemoryFileSystem memoryFileSystem;
-  FakePlatform fakePlatform;
+  late Config config;
+  late MemoryFileSystem memoryFileSystem;
+  late FakePlatform fakePlatform;
 
   setUp(() {
     memoryFileSystem = MemoryFileSystem.test();
     fakePlatform = FakePlatform(
-      operatingSystem: 'linux',
       environment: <String, String>{
         'HOME': '/',
       },
@@ -35,6 +32,7 @@ void main() {
       platform: fakePlatform,
     );
   });
+
   testWithoutContext('Config get set value', () async {
     expect(config.getValue('foo'), null);
     config.setValue('foo', 'bar');
@@ -97,7 +95,7 @@ void main() {
   testWithoutContext('Config does not error on a normally fatal file system exception', () {
     final BufferLogger bufferLogger = BufferLogger.test();
     final File file = ErrorHandlingFile(
-      platform: FakePlatform(operatingSystem: 'linux'),
+      platform: FakePlatform(),
       fileSystem: MemoryFileSystem.test(),
       delegate: FakeFile('testfile'),
     );
@@ -105,8 +103,7 @@ void main() {
     config = Config.createForTesting(file, bufferLogger);
 
     expect(bufferLogger.errorText, contains('Could not read preferences in testfile'));
-    // Also contains original error message:
-    expect(bufferLogger.errorText, contains('The flutter tool cannot access the file or directory'));
+    expect(bufferLogger.errorText, contains(r'sudo chown -R $(whoami) /testfile'));
   });
 
   testWithoutContext('Config in home dir is used if it exists', () {

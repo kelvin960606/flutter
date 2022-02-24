@@ -221,13 +221,44 @@ void main() {
       ),
     );
 
-    final BoxShadow boxShadow = kElevationToShadow[2]![0];
     final RRect rrect = kMaterialEdges[MaterialType.card]!.toRRect(
-      const Rect.fromLTRB(0.0, 0.0, 800.0, 100.0)
+      const Rect.fromLTRB(0.0, 0.0, 800.0, 100.0),
     );
     expect(
       find.byType(MergeableMaterial),
-      paints..rrect(rrect: rrect, color: boxShadow.color, hasMaskFilter: true),
+      paints
+        ..shadow(elevation: 2.0)
+        ..rrect(rrect: rrect, color: Colors.white, hasMaskFilter: false),
+    );
+    debugDisableShadows = true;
+  });
+
+  testWidgets('MergeableMaterial skips shadow for zero elevation', (WidgetTester tester) async {
+    debugDisableShadows = false;
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: MergeableMaterial(
+              elevation: 0,
+              children: <MergeableMaterialItem>[
+                MaterialSlice(
+                  key: ValueKey<String>('A'),
+                  child: SizedBox(
+                    width: 100.0,
+                    height: 100.0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.byType(MergeableMaterial),
+      isNot(paints..shadow(elevation: 0.0)),
     );
     debugDisableShadows = true;
   });
@@ -247,7 +278,7 @@ void main() {
                   ),
                 ),
                 MaterialGap(
-                  key: ValueKey<String>('x')
+                  key: ValueKey<String>('x'),
                 ),
                 MaterialSlice(
                   key: ValueKey<String>('B'),
@@ -357,7 +388,7 @@ void main() {
                   ),
                 ),
                 MaterialGap(
-                  key: ValueKey<String>('x')
+                  key: ValueKey<String>('x'),
                 ),
                 MaterialSlice(
                   key: ValueKey<String>('B'),
@@ -435,7 +466,7 @@ void main() {
                   ),
                 ),
                 MaterialGap(
-                  key: ValueKey<String>('x')
+                  key: ValueKey<String>('x'),
                 ),
                 MaterialSlice(
                   key: ValueKey<String>('B'),
@@ -516,7 +547,7 @@ void main() {
                   ),
                 ),
                 MaterialGap(
-                  key: ValueKey<String>('x')
+                  key: ValueKey<String>('x'),
                 ),
                 MaterialSlice(
                   key: ValueKey<String>('B'),
@@ -744,7 +775,7 @@ void main() {
                   ),
                 ),
                 MaterialGap(
-                  key: ValueKey<String>('x')
+                  key: ValueKey<String>('x'),
                 ),
                 MaterialSlice(
                   key: ValueKey<String>('B'),
@@ -754,7 +785,7 @@ void main() {
                   ),
                 ),
                 MaterialGap(
-                  key: ValueKey<String>('y')
+                  key: ValueKey<String>('y'),
                 ),
                 MaterialSlice(
                   key: ValueKey<String>('C'),
@@ -800,7 +831,7 @@ void main() {
                   ),
                 ),
                 MaterialGap(
-                  key: ValueKey<String>('x')
+                  key: ValueKey<String>('x'),
                 ),
                 MaterialSlice(
                   key: ValueKey<String>('B'),
@@ -810,7 +841,7 @@ void main() {
                   ),
                 ),
                 MaterialGap(
-                  key: ValueKey<String>('y')
+                  key: ValueKey<String>('y'),
                 ),
                 MaterialSlice(
                   key: ValueKey<String>('C'),
@@ -888,7 +919,7 @@ void main() {
                   ),
                 ),
                 MaterialGap(
-                  key: ValueKey<String>('x')
+                  key: ValueKey<String>('x'),
                 ),
                 MaterialSlice(
                   key: ValueKey<String>('C'),
@@ -924,7 +955,7 @@ void main() {
                   ),
                 ),
                 MaterialGap(
-                  key: ValueKey<String>('y')
+                  key: ValueKey<String>('y'),
                 ),
                 MaterialSlice(
                   key: ValueKey<String>('B'),
@@ -934,7 +965,7 @@ void main() {
                   ),
                 ),
                 MaterialGap(
-                  key: ValueKey<String>('z')
+                  key: ValueKey<String>('z'),
                 ),
                 MaterialSlice(
                   key: ValueKey<String>('C'),
@@ -980,7 +1011,7 @@ void main() {
                   ),
                 ),
                 MaterialGap(
-                  key: ValueKey<String>('x')
+                  key: ValueKey<String>('x'),
                 ),
                 MaterialSlice(
                   key: ValueKey<String>('B'),
@@ -990,7 +1021,7 @@ void main() {
                   ),
                 ),
                 MaterialGap(
-                  key: ValueKey<String>('y')
+                  key: ValueKey<String>('y'),
                 ),
                 MaterialSlice(
                   key: ValueKey<String>('C'),
@@ -1027,7 +1058,7 @@ void main() {
                   ),
                 ),
                 MaterialGap(
-                  key: ValueKey<String>('z')
+                  key: ValueKey<String>('z'),
                 ),
                 MaterialSlice(
                   key: ValueKey<String>('C'),
@@ -1147,7 +1178,7 @@ void main() {
                   ),
                 ),
                 MaterialGap(
-                  key: ValueKey<String>('x')
+                  key: ValueKey<String>('x'),
                 ),
                 MaterialSlice(
                   key: ValueKey<String>('C'),

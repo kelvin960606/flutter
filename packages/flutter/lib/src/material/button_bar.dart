@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter/widgets.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
 
 import 'button_bar_theme.dart';
 import 'button_theme.dart';
@@ -188,13 +188,13 @@ class ButtonBar extends StatelessWidget {
         mainAxisAlignment: alignment ?? barTheme.alignment ?? MainAxisAlignment.end,
         mainAxisSize: mainAxisSize ?? barTheme.mainAxisSize ?? MainAxisSize.max,
         overflowDirection: overflowDirection ?? barTheme.overflowDirection ?? VerticalDirection.down,
+        overflowButtonSpacing: overflowButtonSpacing,
         children: children.map<Widget>((Widget child) {
           return Padding(
             padding: EdgeInsets.symmetric(horizontal: paddingUnit),
             child: child,
           );
         }).toList(),
-        overflowButtonSpacing: overflowButtonSpacing,
       ),
     );
     switch (buttonTheme.layoutBehavior) {
@@ -406,7 +406,10 @@ class _RenderButtonBarRow extends RenderFlex {
               case MainAxisAlignment.end:
                 childParentData.offset = Offset(constraints.maxWidth - child.size.width, currentHeight);
                 break;
-              default:
+              case MainAxisAlignment.spaceAround:
+              case MainAxisAlignment.spaceBetween:
+              case MainAxisAlignment.spaceEvenly:
+              case MainAxisAlignment.start:
                 childParentData.offset = Offset(0, currentHeight);
                 break;
             }
@@ -420,7 +423,10 @@ class _RenderButtonBarRow extends RenderFlex {
               case MainAxisAlignment.end:
                 childParentData.offset = Offset(0, currentHeight);
                 break;
-              default:
+              case MainAxisAlignment.spaceAround:
+              case MainAxisAlignment.spaceBetween:
+              case MainAxisAlignment.spaceEvenly:
+              case MainAxisAlignment.start:
                 childParentData.offset = Offset(constraints.maxWidth - child.size.width, currentHeight);
                 break;
             }

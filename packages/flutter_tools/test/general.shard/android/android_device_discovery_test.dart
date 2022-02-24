@@ -38,7 +38,7 @@ void main() {
         featureFlags: TestFeatureFlags(),
         operatingSystemUtils: FakeOperatingSystemUtils(),
       ),
-      processManager: FakeProcessManager.list(<FakeCommand>[]),
+      processManager: FakeProcessManager.empty(),
       fileSystem: MemoryFileSystem.test(),
       platform: FakePlatform(),
       userMessages: UserMessages(),
@@ -49,13 +49,13 @@ void main() {
   });
 
   testWithoutContext('AndroidDevices returns empty device list and diagnostics when adb cannot be run', () async {
-    final FakeProcessManager fakeProcessManager = FakeProcessManager.list(<FakeCommand>[]);
+    final FakeProcessManager fakeProcessManager = FakeProcessManager.empty();
     fakeProcessManager.excludedExecutables.add('adb');
     final AndroidDevices androidDevices = AndroidDevices(
       androidSdk: FakeAndroidSdk(),
       logger: BufferLogger.test(),
       androidWorkflow: AndroidWorkflow(
-        androidSdk: FakeAndroidSdk('adb'),
+        androidSdk: FakeAndroidSdk(),
         featureFlags: TestFeatureFlags(),
         operatingSystemUtils: FakeOperatingSystemUtils(),
       ),
@@ -72,14 +72,13 @@ void main() {
 
   testWithoutContext('AndroidDevices returns empty device list and diagnostics on null Android SDK', () async {
     final AndroidDevices androidDevices = AndroidDevices(
-      androidSdk: null,
       logger: BufferLogger.test(),
       androidWorkflow: AndroidWorkflow(
         androidSdk: FakeAndroidSdk(null),
         featureFlags: TestFeatureFlags(),
         operatingSystemUtils: FakeOperatingSystemUtils(),
       ),
-      processManager: FakeProcessManager.list(<FakeCommand>[]),
+      processManager: FakeProcessManager.empty(),
       fileSystem: MemoryFileSystem.test(),
       platform: FakePlatform(),
       userMessages: UserMessages(),

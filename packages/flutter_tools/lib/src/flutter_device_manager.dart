@@ -2,16 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
-import 'package:meta/meta.dart';
 import 'package:process/process.dart';
 
 import 'android/android_device_discovery.dart';
 import 'android/android_sdk.dart';
 import 'android/android_workflow.dart';
 import 'artifacts.dart';
-import 'base/config.dart';
 import 'base/file_system.dart';
 import 'base/logger.dart';
 import 'base/os.dart';
@@ -30,37 +26,40 @@ import 'ios/ios_workflow.dart';
 import 'ios/simulators.dart';
 import 'linux/linux_device.dart';
 import 'macos/macos_device.dart';
+import 'macos/macos_ipad_device.dart';
 import 'macos/macos_workflow.dart';
-import 'macos/xcode.dart';
+import 'macos/xcdevice.dart';
 import 'tester/flutter_tester.dart';
 import 'version.dart';
 import 'web/web_device.dart';
+import 'windows/uwptool.dart';
 import 'windows/windows_device.dart';
 import 'windows/windows_workflow.dart';
 
 /// A provider for all of the device discovery instances.
 class FlutterDeviceManager extends DeviceManager {
   FlutterDeviceManager({
-    @required Logger logger,
-    @required Platform platform,
-    @required ProcessManager processManager,
-    @required FileSystem fileSystem,
-    @required AndroidSdk androidSdk,
-    @required FeatureFlags featureFlags,
-    @required IOSSimulatorUtils iosSimulatorUtils,
-    @required XCDevice xcDevice,
-    @required AndroidWorkflow androidWorkflow,
-    @required IOSWorkflow iosWorkflow,
-    @required FuchsiaWorkflow fuchsiaWorkflow,
-    @required FlutterVersion flutterVersion,
-    @required Config config,
-    @required Artifacts artifacts,
-    @required MacOSWorkflow macOSWorkflow,
-    @required UserMessages userMessages,
-    @required OperatingSystemUtils operatingSystemUtils,
-    @required WindowsWorkflow windowsWorkflow,
-    @required Terminal terminal,
-    @required CustomDevicesConfig customDevicesConfig,
+    required Logger logger,
+    required Platform platform,
+    required ProcessManager processManager,
+    required FileSystem fileSystem,
+    required AndroidSdk androidSdk,
+    required FeatureFlags featureFlags,
+    required IOSSimulatorUtils iosSimulatorUtils,
+    required XCDevice xcDevice,
+    required AndroidWorkflow androidWorkflow,
+    required IOSWorkflow iosWorkflow,
+    required FuchsiaWorkflow fuchsiaWorkflow,
+    required FlutterVersion flutterVersion,
+    required Artifacts artifacts,
+    required MacOSWorkflow macOSWorkflow,
+    required FuchsiaSdk fuchsiaSdk,
+    required UserMessages userMessages,
+    required OperatingSystemUtils operatingSystemUtils,
+    required WindowsWorkflow windowsWorkflow,
+    required Terminal terminal,
+    required CustomDevicesConfig customDevicesConfig,
+    required UwpTool uwptool,
   }) : deviceDiscoverers =  <DeviceDiscovery>[
     AndroidDevices(
       logger: logger,
@@ -90,7 +89,6 @@ class FlutterDeviceManager extends DeviceManager {
       fileSystem: fileSystem,
       flutterVersion: flutterVersion,
       processManager: processManager,
-      config: config,
       logger: logger,
       artifacts: artifacts,
       operatingSystemUtils: operatingSystemUtils,
@@ -98,6 +96,14 @@ class FlutterDeviceManager extends DeviceManager {
     MacOSDevices(
       processManager: processManager,
       macOSWorkflow: macOSWorkflow,
+      logger: logger,
+      platform: platform,
+      fileSystem: fileSystem,
+      operatingSystemUtils: operatingSystemUtils,
+    ),
+    MacOSDesignedForIPadDevices(
+      processManager: processManager,
+      iosWorkflow: iosWorkflow,
       logger: logger,
       platform: platform,
       fileSystem: fileSystem,
@@ -118,6 +124,7 @@ class FlutterDeviceManager extends DeviceManager {
       fileSystem: fileSystem,
       windowsWorkflow: windowsWorkflow,
       featureFlags: featureFlags,
+      uwptool: uwptool,
     ),
     WebDevices(
       featureFlags: featureFlags,

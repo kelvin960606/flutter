@@ -278,6 +278,7 @@ class _CupertinoPickerState extends State<CupertinoPicker> {
   Widget build(BuildContext context) {
     final Color? resolvedBackgroundColor = CupertinoDynamicColor.maybeResolve(widget.backgroundColor, context);
 
+    assert(RenderListWheelViewport.defaultPerspective == _kDefaultPerspective);
     final Widget result = DefaultTextStyle(
       style: CupertinoTheme.of(context).textTheme.pickerTextStyle,
       child: Stack(
@@ -289,7 +290,6 @@ class _CupertinoPickerState extends State<CupertinoPicker> {
                 controller: widget.scrollController ?? _controller,
                 physics: const FixedExtentScrollPhysics(),
                 diameterRatio: widget.diameterRatio,
-                perspective: _kDefaultPerspective,
                 offAxisFraction: widget.offAxisFraction,
                 useMagnifier: widget.useMagnifier,
                 magnification: widget.magnification,
@@ -433,7 +433,7 @@ class _RenderCupertinoPickerSemantics extends RenderProxyBox {
   late FixedExtentScrollController _controller;
   set controller(FixedExtentScrollController value) => _updateController(_controller, value);
 
-  // This method exists to allow controller to be non-null. It is only called with a null oldValue from construtor.
+  // This method exists to allow controller to be non-null. It is only called with a null oldValue from constructor.
   void _updateController(FixedExtentScrollController? oldValue, FixedExtentScrollController value) {
     if (value == oldValue)
       return;

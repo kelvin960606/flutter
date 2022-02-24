@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 const Key blockKey = Key('test');
 
@@ -104,7 +104,7 @@ void main() {
     expect(first, equals(0));
     expect(second, equals(1));
 
-    await tester.pumpWidget(buildBlock(reverse: false));
+    await tester.pumpWidget(buildBlock());
 
     await tester.tapAt(target);
     expect(first, equals(1));

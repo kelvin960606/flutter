@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('Restoration Smoke Test', (WidgetTester tester) async {
@@ -812,9 +812,7 @@ void main() {
     // Move navigator into restoration scope.
     await tester.pumpWidget(const RootRestorationScope(
       restorationId: 'root',
-      child: TestWidget(
-        restorationId: 'app',
-      ),
+      child: TestWidget(),
     ));
 
     expect(findRoute('Foo'), findsOneWidget);
@@ -1153,7 +1151,7 @@ class TestPage extends Page<void> {
         return RouteWidget(
           name: name!,
         );
-      }
+      },
     );
   }
 }
@@ -1260,7 +1258,7 @@ class RouteFutureWidgetState extends State<RouteFutureWidget> with RestorationMi
         setState(() {
           value = i;
         });
-      }
+      },
     );
   }
 
@@ -1332,4 +1330,4 @@ class _RouteFinder extends MatchFinder {
   }
 }
 
-class FakeRoute extends Fake implements Route<void> {}
+class FakeRoute extends Fake implements Route<void> { }

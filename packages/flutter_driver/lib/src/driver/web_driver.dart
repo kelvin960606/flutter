@@ -4,15 +4,19 @@
 
 import 'dart:convert';
 import 'dart:io';
-
+import 'package:file/file.dart';
 import 'package:matcher/matcher.dart';
 import 'package:meta/meta.dart';
+
+import 'package:path/path.dart' as path;
 import 'package:vm_service/vm_service.dart' as vms;
 import 'package:webdriver/async_io.dart' as async_io;
 import 'package:webdriver/support/async.dart';
 
 import '../common/error.dart';
 import '../common/message.dart';
+
+import 'common.dart';
 import 'driver.dart';
 import 'timeline.dart';
 
@@ -24,12 +28,25 @@ import 'timeline.dart';
 class WebFlutterDriver extends FlutterDriver {
   /// Creates a driver that uses a connection provided by the given
   /// [_connection].
-  WebFlutterDriver.connectedTo(this._connection) :
-        _startTime = DateTime.now();
+  WebFlutterDriver.connectedTo(
+    this._connection, {
+    bool printCommunication = false,
+    bool logCommunicationToFile = true,
+  })  : _printCommunication = printCommunication,
+        _logCommunicationToFile = logCommunicationToFile,
+        _startTime = DateTime.now(),
+        _driverId = _nextDriverId++
+    {
+      _logFilePathName = path.join(testOutputsDirectory, 'flutter_driver_commands_$_driverId.log');
+    }
+
 
   final FlutterWebConnection _connection;
   DateTime _startTime;
-  bool _accessibilityEnabled = false;
+  static int _nextDriverId = 0;
+
+  /// The unique ID of this driver instance.
+  final int _driverId;
 
   /// Start time for tracing.
   @visibleForTesting
@@ -44,14 +61,32 @@ class WebFlutterDriver extends FlutterDriver {
   @override
   async_io.WebDriver get webDriver => _connection._driver;
 
+  /// Whether to print communication between host and app to `stdout`.
+  final bool _printCommunication;
+
+  /// Whether to log communication between host and app to `flutter_driver_commands.log`.
+  final bool _logCommunicationToFile;
+
+  /// Logs are written here when _logCommunicationToFile is true.
+  late final String _logFilePathName;
+
+  /// Getter for file pathname where logs are written when _logCommunicationToFile is true
+  String get logFilePathName => _logFilePathName;
+
   /// Creates a driver that uses a connection provided by the given
   /// [hostUrl] which would fallback to environment variable VM_SERVICE_URL.
   /// Driver also depends on environment variables DRIVER_SESSION_ID,
   /// BROWSER_SUPPORTS_TIMELINE, DRIVER_SESSION_URI, DRIVER_SESSION_SPEC,
   /// DRIVER_SESSION_CAPABILITIES and ANDROID_CHROME_ON_EMULATOR for
   /// configurations.
-  static Future<FlutterDriver> connectWeb(
-      {String? hostUrl, Duration? timeout}) async {
+  ///
+  /// See [FlutterDriver.connect] for more documentation.
+  static Future<FlutterDriver> connectWeb({
+    String? hostUrl,
+    bool printCommunication = false,
+    bool logCommunicationToFile = true,
+    Duration? timeout,
+  }) async {
     hostUrl ??= Platform.environment['VM_SERVICE_URL'];
     final Map<String, dynamic> settings = <String, dynamic>{
       'support-timeline-action': Platform.environment['SUPPORT_TIMELINE_ACTION'] == 'true',
@@ -63,36 +98,27 @@ class WebFlutterDriver extends FlutterDriver {
     };
     final FlutterWebConnection connection = await FlutterWebConnection.connect
       (hostUrl!, settings, timeout: timeout);
-    return WebFlutterDriver.connectedTo(connection);
-  }
-
-  @override
-  Future<void> enableAccessibility() async {
-    if (!_accessibilityEnabled) {
-      // Clicks the button to enable accessibility via Javascript for Desktop Web.
-      //
-      // The tag used in the script is based on
-      // https://github.com/flutter/engine/blob/master/lib/web_ui/lib/src/engine/semantics/semantics_helper.dart#L193
-      //
-      // TODO(angjieli): Support Mobile Web. (https://github.com/flutter/flutter/issues/65192)
-      await webDriver.execute(
-          'document.querySelector(\'flt-semantics-placeholder\').click();',
-          <String>[]);
-      _accessibilityEnabled = true;
-    }
+    return WebFlutterDriver.connectedTo(
+      connection,
+      printCommunication: printCommunication,
+      logCommunicationToFile: logCommunicationToFile,
+    );
   }
 
   @override
   Future<Map<String, dynamic>> sendCommand(Command command) async {
     Map<String, dynamic> response;
     final Map<String, String> serialized = command.serialize();
+    _logCommunication('>>> $serialized');
     try {
       final dynamic data = await _connection.sendCommand("window.\$flutterDriver('${jsonEncode(serialized)}')", command.timeout);
       response = data != null ? (json.decode(data as String) as Map<String, dynamic>?)! : <String, dynamic>{};
+      _logCommunication('<<< $response');
     } catch (error, stackTrace) {
-      throw DriverError("Failed to respond to $command due to remote error\n : \$flutterDriver('${jsonEncode(serialized)}')",
-          error,
-          stackTrace
+      throw DriverError(
+        "Failed to respond to $command due to remote error\n : \$flutterDriver('${jsonEncode(serialized)}')",
+        error,
+        stackTrace
       );
     }
     if (response['isError'] == true)
@@ -106,6 +132,18 @@ class WebFlutterDriver extends FlutterDriver {
   @override
   Future<void> waitUntilFirstFrameRasterized() async {
     throw UnimplementedError();
+  }
+
+  void _logCommunication(String message) {
+    if (_printCommunication) {
+      driverLog('WebFlutterDriver', message);
+    }
+    if (_logCommunicationToFile) {
+      assert(_logFilePathName != null);
+      final File file = fs.file(_logFilePathName);
+      file.createSync(recursive: true); // no-op if file exists
+      file.writeAsStringSync('${DateTime.now()} $message\n', mode: FileMode.append, flush: true);
+    }
   }
 
   @override
@@ -130,12 +168,12 @@ class WebFlutterDriver extends FlutterDriver {
     final List<Map<String, dynamic>> events = <Map<String, dynamic>>[];
     for (final async_io.LogEntry entry in await _connection.logs.toList()) {
       if (_startTime.isBefore(entry.timestamp)) {
-        final Map<String, dynamic> data = jsonDecode(entry.message!)['message'] as Map<String, dynamic>;
+        final Map<String, dynamic> data = (jsonDecode(entry.message!) as Map<String, dynamic>)['message'] as Map<String, dynamic>;
         if (data['method'] == 'Tracing.dataCollected') {
           // 'ts' data collected from Chrome is in double format, conversion needed
           try {
-            data['params']['ts'] =
-                double.parse(data['params']['ts'].toString()).toInt();
+            final Map<String, dynamic> params = data['params'] as Map<String, dynamic>;
+            params['ts'] = double.parse(params['ts'].toString()).toInt();
           } on FormatException catch (_) {
             // data is corrupted, skip
             continue;
@@ -185,11 +223,7 @@ class WebFlutterDriver extends FlutterDriver {
 class FlutterWebConnection {
   /// Creates a FlutterWebConnection with WebDriver
   /// and whether the WebDriver supports timeline action.
-  FlutterWebConnection(this._driver, this.supportsTimelineAction) {
-    _driver.logs.get(async_io.LogType.browser).listen((async_io.LogEntry entry) {
-      print('[${entry.level}]: ${entry.message}');
-    });
-  }
+  FlutterWebConnection(this._driver, this.supportsTimelineAction);
 
   final async_io.WebDriver _driver;
 
@@ -228,8 +262,10 @@ class FlutterWebConnection {
     dynamic result;
     try {
       await _driver.execute(script, <void>[]);
-    } catch (_) {
-      // In case there is an exception, do nothing
+    } catch (error) {
+      // We should not just arbitrarily throw all exceptions on the ground.
+      // This is probably hiding real errors.
+      // TODO(ianh): Determine what exceptions are expected here and handle those specifically.
     }
 
     try {
@@ -238,7 +274,10 @@ class FlutterWebConnection {
         matcher: isNotNull,
         timeout: duration ?? const Duration(days: 30),
       );
-    } catch (_) {
+    } catch (error) {
+      // We should not just arbitrarily throw all exceptions on the ground.
+      // This is probably hiding real errors.
+      // TODO(ianh): Determine what exceptions are expected here and handle those specifically.
       // Returns null if exception thrown.
       return null;
     } finally {

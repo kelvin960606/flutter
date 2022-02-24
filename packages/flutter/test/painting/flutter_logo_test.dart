@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// This file is run as part of a reduced test set in CI on Mac and Windows
+// machines.
+@Tags(<String>['reduced-test-set'])
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -63,7 +67,7 @@ void main() {
     expect(
       start.toString(),
       equals(
-        'FlutterLogoDecoration(textColor: Color(0xffd4f144), style: stacked)'
+        'FlutterLogoDecoration(textColor: Color(0xffd4f144), style: stacked)',
       ),
     );
     expect(

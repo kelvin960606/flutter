@@ -113,7 +113,7 @@ class CachingIterable<E> extends IterableBase<E> {
   /// once. If you have an [Iterable], you can pass its [iterator]
   /// field as the argument to this constructor.
   ///
-  /// You can use a `sync*` function with this as follows:
+  /// You can this with an existing `sync*` function as follows:
   ///
   /// ```dart
   /// Iterable<int> range(int start, int end) sync* {
@@ -125,6 +125,10 @@ class CachingIterable<E> extends IterableBase<E> {
   /// print(i.length); // walks the list
   /// print(i.length); // efficient
   /// ```
+  ///
+  /// Beware that this will eagerly evaluate the `range` iterable, and because
+  /// of that it would be better to just implement `range` as something that
+  /// returns a `List` to begin with if possible.
   CachingIterable(this._prefillIterator);
 
   final Iterator<E> _prefillIterator;
@@ -136,8 +140,8 @@ class CachingIterable<E> extends IterableBase<E> {
   }
 
   @override
-  Iterable<T> map<T>(T Function(E e) f) {
-    return CachingIterable<T>(super.map<T>(f).iterator);
+  Iterable<T> map<T>(T Function(E e) toElement) {
+    return CachingIterable<T>(super.map<T>(toElement).iterator);
   }
 
   @override
@@ -146,8 +150,8 @@ class CachingIterable<E> extends IterableBase<E> {
   }
 
   @override
-  Iterable<T> expand<T>(Iterable<T> Function(E element) f) {
-    return CachingIterable<T>(super.expand<T>(f).iterator);
+  Iterable<T> expand<T>(Iterable<T> Function(E element) toElements) {
+    return CachingIterable<T>(super.expand<T>(toElements).iterator);
   }
 
   @override
@@ -179,7 +183,7 @@ class CachingIterable<E> extends IterableBase<E> {
   @override
   List<E> toList({ bool growable = true }) {
     _precacheEntireList();
-    return List<E>.from(_results, growable: growable);
+    return List<E>.of(_results, growable: growable);
   }
 
   void _precacheEntireList() {

@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import '../../artifacts.dart';
 import '../../base/file_system.dart';
 import '../../build_info.dart';
@@ -66,7 +64,11 @@ class UnpackWindows extends Target {
 
   @override
   Future<void> build(Environment environment) async {
-    final BuildMode buildMode = getBuildModeForName(environment.defines[kBuildMode]);
+    final String? buildModeEnvironment = environment.defines[kBuildMode];
+    if (buildModeEnvironment == null) {
+      throw MissingDefineException(kBuildMode, name);
+    }
+    final BuildMode buildMode = getBuildModeForName(buildModeEnvironment);
     final String engineSourcePath = environment.artifacts
       .getArtifactPath(
         Artifact.windowsDesktopPath,
@@ -133,18 +135,20 @@ class UnpackWindowsUwp extends Target {
 
   @override
   Future<void> build(Environment environment) async {
-    // These artifact look ups need to modified to windows-x64-uwp once
-    // the cache updates have landed.
-    final BuildMode buildMode = getBuildModeForName(environment.defines[kBuildMode]);
+    final String? buildModeEnvironment = environment.defines[kBuildMode];
+    if (buildModeEnvironment == null) {
+      throw MissingDefineException(kBuildMode, name);
+    }
+    final BuildMode buildMode = getBuildModeForName(buildModeEnvironment);
     final String engineSourcePath = environment.artifacts
       .getArtifactPath(
-        Artifact.windowsDesktopPath,
+        Artifact.windowsUwpDesktopPath,
         platform: TargetPlatform.windows_x64,
         mode: buildMode,
       );
     final String clientSourcePath = environment.artifacts
       .getArtifactPath(
-        Artifact.windowsCppClientWrapper,
+        Artifact.windowsUwpCppClientWrapper,
         platform: TargetPlatform.windows_x64,
         mode: buildMode,
       );
@@ -209,10 +213,11 @@ abstract class BundleWindowsAssets extends Target {
 
   @override
   Future<void> build(Environment environment) async {
-    if (environment.defines[kBuildMode] == null) {
+    final String? buildModeEnvironment = environment.defines[kBuildMode];
+    if (buildModeEnvironment == null) {
       throw MissingDefineException(kBuildMode, 'bundle_windows_assets');
     }
-    final BuildMode buildMode = getBuildModeForName(environment.defines[kBuildMode]);
+    final BuildMode buildMode = getBuildModeForName(buildModeEnvironment);
     final Directory outputDirectory = environment.outputDir
       .childDirectory('flutter_assets');
     if (!outputDirectory.existsSync()) {
@@ -255,13 +260,57 @@ abstract class BundleWindowsAssetsUwp extends BundleWindowsAssets {
 /// A wrapper for AOT compilation that copies app.so into the output directory.
 class WindowsAotBundle extends Target {
   /// Create a [WindowsAotBundle] wrapper for [aotTarget].
-  const WindowsAotBundle(this.aotTarget);
+  const WindowsAotBundle(this.aotTarget, {required this.uwp});
+
+  /// The [AotElfBase] subclass that produces the app.so.
+  final AotElfBase aotTarget;
+
+  /// Whether this is the UWP target.
+  final bool uwp;
+
+  @override
+  String get name => uwp ? 'windows_uwp_aot_bundle' : 'windows_aot_bundle';
+
+  @override
+  List<Source> get inputs => const <Source>[
+    Source.pattern('{BUILD_DIR}/app.so'),
+  ];
+
+  @override
+  List<Source> get outputs => uwp ?
+    const <Source>[
+      Source.pattern('{OUTPUT_DIR}/winuwp/app.so'),
+    ] :
+    const <Source>[
+      Source.pattern('{OUTPUT_DIR}/windows/app.so'),
+    ];
+
+  @override
+  List<Target> get dependencies => <Target>[
+    aotTarget,
+  ];
+
+  @override
+  Future<void> build(Environment environment) async {
+    final File outputFile = environment.buildDir.childFile('app.so');
+    final Directory outputDirectory = environment.outputDir.childDirectory(uwp ? 'winuwp' : 'windows');
+    if (!outputDirectory.existsSync()) {
+      outputDirectory.createSync(recursive: true);
+    }
+    outputFile.copySync(outputDirectory.childFile('app.so').path);
+  }
+}
+
+/// A wrapper for AOT compilation that copies app.so into the output directory.
+class WindowsUwpAotBundle extends Target {
+  /// Create a [WindowsAotBundle] wrapper for [aotTarget].
+  const WindowsUwpAotBundle(this.aotTarget);
 
   /// The [AotElfBase] subclass that produces the app.so.
   final AotElfBase aotTarget;
 
   @override
-  String get name => 'windows_aot_bundle';
+  String get name => 'windows_uwp_aot_bundle';
 
   @override
   List<Source> get inputs => const <Source>[
@@ -270,7 +319,7 @@ class WindowsAotBundle extends Target {
 
   @override
   List<Source> get outputs => const <Source>[
-    Source.pattern('{OUTPUT_DIR}/windows/app.so'),
+    Source.pattern('{OUTPUT_DIR}/winuwp/app.so'),
   ];
 
   @override
@@ -281,7 +330,7 @@ class WindowsAotBundle extends Target {
   @override
   Future<void> build(Environment environment) async {
     final File outputFile = environment.buildDir.childFile('app.so');
-    final Directory outputDirectory = environment.outputDir.childDirectory('windows');
+    final Directory outputDirectory = environment.outputDir.childDirectory('winuwp');
     if (!outputDirectory.existsSync()) {
       outputDirectory.createSync(recursive: true);
     }
@@ -301,7 +350,7 @@ class ReleaseBundleWindowsAssets extends BundleWindowsAssets {
   @override
   List<Target> get dependencies => <Target>[
     ...super.dependencies,
-    const WindowsAotBundle(AotElfRelease(TargetPlatform.windows_x64)),
+    const WindowsAotBundle(AotElfRelease(TargetPlatform.windows_x64), uwp: false),
   ];
 }
 
@@ -317,7 +366,7 @@ class ProfileBundleWindowsAssets extends BundleWindowsAssets {
   @override
   List<Target> get dependencies => <Target>[
     ...super.dependencies,
-    const WindowsAotBundle(AotElfProfile(TargetPlatform.windows_x64)),
+    const WindowsAotBundle(AotElfProfile(TargetPlatform.windows_x64), uwp: false),
   ];
 }
 
@@ -338,7 +387,6 @@ class DebugBundleWindowsAssets extends BundleWindowsAssets {
   ];
 }
 
-
 class ReleaseBundleWindowsAssetsUwp extends BundleWindowsAssetsUwp {
   const ReleaseBundleWindowsAssetsUwp();
 
@@ -351,7 +399,7 @@ class ReleaseBundleWindowsAssetsUwp extends BundleWindowsAssetsUwp {
   @override
   List<Target> get dependencies => <Target>[
     ...super.dependencies,
-    const WindowsAotBundle(AotElfRelease(TargetPlatform.windows_x64)),
+    const WindowsAotBundle(AotElfRelease(TargetPlatform.windows_uwp_x64), uwp: true),
   ];
 }
 
@@ -367,7 +415,7 @@ class ProfileBundleWindowsAssetsUwp extends BundleWindowsAssetsUwp {
   @override
   List<Target> get dependencies => <Target>[
     ...super.dependencies,
-    const WindowsAotBundle(AotElfProfile(TargetPlatform.windows_x64)),
+    const WindowsAotBundle(AotElfProfile(TargetPlatform.windows_uwp_x64), uwp: true),
   ];
 }
 

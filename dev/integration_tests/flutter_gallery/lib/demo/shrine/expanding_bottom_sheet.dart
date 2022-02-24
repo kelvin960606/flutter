@@ -6,10 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:scoped_model/scoped_model.dart';
 
-import 'package:flutter_gallery/demo/shrine/colors.dart';
-import 'package:flutter_gallery/demo/shrine/model/app_state_model.dart';
-import 'package:flutter_gallery/demo/shrine/model/product.dart';
-import 'package:flutter_gallery/demo/shrine/shopping_cart.dart';
+import 'colors.dart';
+import 'model/app_state_model.dart';
+import 'model/product.dart';
+import 'shopping_cart.dart';
 
 // These curves define the emphasized easing curve.
 const Cubic _kAccelerateCurve = Cubic(0.548, 0.0, 0.757, 0.464);
@@ -31,10 +31,10 @@ class ExpandingBottomSheet extends StatefulWidget {
   final AnimationController hideController;
 
   @override
-  _ExpandingBottomSheetState createState() => _ExpandingBottomSheetState();
+  ExpandingBottomSheetState createState() => ExpandingBottomSheetState();
 
-  static _ExpandingBottomSheetState? of(BuildContext context, {bool isNullOk = false}) {
-    final _ExpandingBottomSheetState? result = context.findAncestorStateOfType<_ExpandingBottomSheetState>();
+  static ExpandingBottomSheetState? of(BuildContext context, {bool isNullOk = false}) {
+    final ExpandingBottomSheetState? result = context.findAncestorStateOfType<ExpandingBottomSheetState>();
     if (isNullOk || result != null) {
       return result;
     }
@@ -98,7 +98,7 @@ double _getPeakPoint({required double begin, required double end}) {
   return begin + (end - begin) * _kPeakVelocityProgress;
 }
 
-class _ExpandingBottomSheetState extends State<ExpandingBottomSheet> with TickerProviderStateMixin {
+class ExpandingBottomSheetState extends State<ExpandingBottomSheet> with TickerProviderStateMixin {
   final GlobalKey _expandingBottomSheetKey = GlobalKey(debugLabel: 'Expanding bottom sheet');
 
   // The width of the Material, calculated by _widthFor() & based on the number
@@ -172,7 +172,7 @@ class _ExpandingBottomSheetState extends State<ExpandingBottomSheet> with Ticker
       ).animate(
         CurvedAnimation(
           parent: _controller.view,
-          curve: const Interval(0.434, 1.0, curve: Curves.linear), // not used
+          curve: const Interval(0.434, 1.0), // not used
           // only the reverseCurve will be used
           reverseCurve: Interval(0.434, 1.0, curve: Curves.fastOutSlowIn.flipped),
         ),
@@ -278,8 +278,8 @@ class _ExpandingBottomSheetState extends State<ExpandingBottomSheet> with Ticker
               children: <Widget>[
                 AnimatedPadding(
                   padding: _cartPaddingFor(numProducts),
-                  child: const Icon(Icons.shopping_cart),
                   duration: const Duration(milliseconds: 225),
+                  child: const Icon(Icons.shopping_cart),
                 ),
                 Container(
                   // Accounts for the overflow number
@@ -378,7 +378,6 @@ class _ExpandingBottomSheetState extends State<ExpandingBottomSheet> with Ticker
       key: _expandingBottomSheetKey,
       duration: const Duration(milliseconds: 225),
       curve: Curves.easeInOut,
-      vsync: this,
       alignment: FractionalOffset.topLeft,
       child: WillPopScope(
         onWillPop: _onWillPop,
@@ -407,7 +406,7 @@ class ProductThumbnailRow extends StatefulWidget {
   const ProductThumbnailRow({Key? key}) : super(key: key);
 
   @override
-  _ProductThumbnailRowState createState() => _ProductThumbnailRowState();
+  State<ProductThumbnailRow> createState() => _ProductThumbnailRowState();
 }
 
 class _ProductThumbnailRowState extends State<ProductThumbnailRow> {
@@ -450,7 +449,7 @@ class _ProductThumbnailRowState extends State<ProductThumbnailRow> {
     );
 
     final Animation<double> opacity = CurvedAnimation(
-      curve: const Interval(0.33, 1.0, curve: Curves.linear),
+      curve: const Interval(0.33, 1.0),
       parent: animation,
     );
 

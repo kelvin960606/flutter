@@ -13,17 +13,31 @@ List<Widget> children(int n) {
 }
 
 void main() {
-  testWidgets('Scrolling with list view changes', (WidgetTester tester) async {
+  testWidgets('Scrolling with list view changes, leaving the overscroll', (WidgetTester tester) async {
     final ScrollController controller = ScrollController();
-    await tester.pumpWidget(MaterialApp(home: ListView(children: children(30), controller: controller)));
+    await tester.pumpWidget(MaterialApp(home: ListView(controller: controller, children: children(30))));
     final double thirty = controller.position.maxScrollExtent;
     controller.jumpTo(thirty);
     await tester.pump();
     controller.jumpTo(thirty + 100.0); // past the end
     await tester.pump();
-    await tester.pumpWidget(MaterialApp(home: ListView(children: children(31), controller: controller)));
-    expect(controller.position.pixels, thirty + 200.0); // same distance past the end
-    expect(await tester.pumpAndSettle(), 7); // now it goes ballistic...
+    await tester.pumpWidget(MaterialApp(home: ListView(controller: controller, children: children(31))));
+    expect(controller.position.pixels, thirty + 100.0); // has the same position, but no longer overscrolled
+    expect(await tester.pumpAndSettle(), 1); // doesn't have ballistic animation...
+    expect(controller.position.pixels, thirty + 100.0); // and ends up at the end
+  });
+
+  testWidgets('Scrolling with list view changes, remaining overscrolled', (WidgetTester tester) async {
+    final ScrollController controller = ScrollController();
+    await tester.pumpWidget(MaterialApp(home: ListView(controller: controller, children: children(30))));
+    final double thirty = controller.position.maxScrollExtent;
+    controller.jumpTo(thirty);
+    await tester.pump();
+    controller.jumpTo(thirty + 200.0); // past the end
+    await tester.pump();
+    await tester.pumpWidget(MaterialApp(home: ListView(controller: controller, children: children(31))));
+    expect(controller.position.pixels, thirty + 200.0); // has the same position, still overscrolled
+    expect(await tester.pumpAndSettle(), 8); // now it goes ballistic...
     expect(controller.position.pixels, thirty + 100.0); // and ends up at the end
   });
 
@@ -119,7 +133,7 @@ class PageView62209 extends StatefulWidget {
   const PageView62209({Key? key}) : super(key: key);
 
   @override
-  _PageView62209State createState() => _PageView62209State();
+  State<PageView62209> createState() => _PageView62209State();
 }
 
 class _PageView62209State extends State<PageView62209> {
@@ -157,7 +171,7 @@ class _PageView62209State extends State<PageView62209> {
                 );
               });
             },
-          )
+          ),
         ],
       ),
     );
@@ -181,7 +195,7 @@ class Carousel62209 extends StatefulWidget {
   final List<Carousel62209Page> pages;
 
   @override
-  _Carousel62209State createState() => _Carousel62209State();
+  State<Carousel62209> createState() => _Carousel62209State();
 }
 
 class _Carousel62209State extends State<Carousel62209> {
@@ -197,7 +211,7 @@ class _Carousel62209State extends State<Carousel62209> {
   void initState() {
     super.initState();
     _pages = widget.pages.toList();
-    _pageController = PageController(initialPage: 0, keepPage: false);
+    _pageController = PageController(keepPage: false);
   }
 
   @override

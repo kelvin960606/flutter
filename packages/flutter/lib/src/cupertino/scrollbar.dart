@@ -38,7 +38,23 @@ const double _kScrollbarCrossAxisMargin = 3.0;
 /// animate from [thickness] and [radius] to [thicknessWhileDragging] and
 /// [radiusWhileDragging], respectively.
 ///
-// TODO(Piinks): Add code sample
+/// {@tool dartpad}
+/// This sample shows a [CupertinoScrollbar] that fades in and out of view as scrolling occurs.
+/// The scrollbar will fade into view as the user scrolls, and fade out when scrolling stops.
+/// The `thickness` of the scrollbar will animate from 6 pixels to the `thicknessWhileDragging` of 10
+/// when it is dragged by the user. The `radius` of the scrollbar thumb corners will animate from 34
+/// to the `radiusWhileDragging` of 0 when the scrollbar is being dragged by the user.
+///
+/// ** See code in examples/api/lib/cupertino/scrollbar/cupertino_scrollbar.0.dart **
+/// {@end-tool}
+///
+/// {@tool dartpad}
+/// When `isAlwaysShown` is true, the scrollbar thumb will remain visible without the
+/// fade animation. This requires that a [ScrollController] is provided to controller,
+/// or that the [PrimaryScrollController] is available.
+///
+/// ** See code in examples/api/lib/cupertino/scrollbar/cupertino_scrollbar.1.dart **
+/// {@end-tool}
 ///
 /// See also:
 ///
@@ -62,6 +78,7 @@ class CupertinoScrollbar extends RawScrollbar {
     Radius radius = defaultRadius,
     this.radiusWhileDragging = defaultRadiusWhileDragging,
     ScrollNotificationPredicate? notificationPredicate,
+    ScrollbarOrientation? scrollbarOrientation,
   }) : assert(thickness != null),
        assert(thickness < double.infinity),
        assert(thicknessWhileDragging != null),
@@ -79,6 +96,7 @@ class CupertinoScrollbar extends RawScrollbar {
          timeToFade: _kScrollbarTimeToFade,
          pressDuration: const Duration(milliseconds: 100),
          notificationPredicate: notificationPredicate ?? defaultScrollNotificationPredicate,
+         scrollbarOrientation: scrollbarOrientation,
        );
 
   /// Default value for [thickness] if it's not specified in [CupertinoScrollbar].
@@ -111,7 +129,7 @@ class CupertinoScrollbar extends RawScrollbar {
   final Radius radiusWhileDragging;
 
   @override
-  _CupertinoScrollbarState createState() => _CupertinoScrollbarState();
+  RawScrollbarState<CupertinoScrollbar> createState() => _CupertinoScrollbarState();
 }
 
 class _CupertinoScrollbarState extends RawScrollbarState<CupertinoScrollbar> {
@@ -148,7 +166,8 @@ class _CupertinoScrollbarState extends RawScrollbarState<CupertinoScrollbar> {
       ..radius = _radius
       ..padding = MediaQuery.of(context).padding
       ..minLength = _kScrollbarMinLength
-      ..minOverscrollLength = _kScrollbarMinOverscrollLength;
+      ..minOverscrollLength = _kScrollbarMinOverscrollLength
+      ..scrollbarOrientation = widget.scrollbarOrientation;
   }
 
   double _pressStartAxisPosition = 0.0;

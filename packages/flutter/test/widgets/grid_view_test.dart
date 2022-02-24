@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/widgets.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/gestures.dart' show DragStartBehavior;
+import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import '../rendering/mock_canvas.dart';
 import '../rendering/rendering_tester.dart';
@@ -19,7 +19,6 @@ void main() {
         child: GridView.count(
           dragStartBehavior: DragStartBehavior.down,
           crossAxisCount: 4,
-          children: const <Widget>[],
         ),
       ),
     );
@@ -79,8 +78,7 @@ void main() {
     expect(find.text('Alabama'), findsNothing);
     expect(find.text('Pennsylvania'), findsNothing);
 
-    expect(tester.getCenter(find.text('Tennessee')),
-        equals(const Offset(300.0, 100.0)));
+    expect(tester.getCenter(find.text('Tennessee')), equals(const Offset(300.0, 100.0)));
 
     await tester.tap(find.text('Tennessee'));
     expect(log, equals(<String>['Tennessee']));
@@ -138,8 +136,7 @@ void main() {
 
     expect(find.text('Alabama'), findsNothing);
 
-    expect(tester.getCenter(find.text('Tennessee')),
-        equals(const Offset(300.0, 100.0)));
+    expect(tester.getCenter(find.text('Tennessee')), equals(const Offset(300.0, 100.0)));
 
     await tester.tap(find.text('Tennessee'));
     expect(log, equals(<String>['Tennessee']));
@@ -161,7 +158,7 @@ void main() {
               builder: (BuildContext context) {
                 log.add(i);
                 return Text('$i');
-              }
+              },
             );
           }),
         ),
@@ -253,7 +250,7 @@ void main() {
               builder: (BuildContext context) {
                 log.add(i);
                 return Text('$i');
-              }
+              },
             );
           }),
         ),
@@ -289,7 +286,7 @@ void main() {
               builder: (BuildContext context) {
                 log.add(i);
                 return Text('$i');
-              }
+              },
             );
           }),
         ),
@@ -328,7 +325,7 @@ void main() {
         viewportMainAxisExtent: 100.0,
         remainingCacheExtent: 0.0,
         cacheOrigin: 0.0,
-      )
+      ),
     );
     expect(layout.getMinChildIndexForScrollOffset(1000.0), 0.0);
   });
@@ -348,7 +345,7 @@ void main() {
               builder: (BuildContext context) {
                 log.add(i);
                 return Text('$i');
-              }
+              },
             );
           }),
         ),
@@ -384,7 +381,7 @@ void main() {
               builder: (BuildContext context) {
                 log.add(i);
                 return Text('$i');
-              }
+              },
             );
           }),
         ),
@@ -634,8 +631,8 @@ void main() {
         textDirection: TextDirection.ltr,
         child: GridView(
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
-          children: <Widget>[Container(height: 2000.0)],
           clipBehavior: Clip.antiAlias,
+          children: <Widget>[Container(height: 2000.0)],
         ),
       ),
     );
@@ -686,8 +683,8 @@ void main() {
         textDirection: TextDirection.ltr,
         child: GridView.count(
           crossAxisCount: 3,
-          children: <Widget>[Container(height: 2000.0)],
           clipBehavior: Clip.antiAlias,
+          children: <Widget>[Container(height: 2000.0)],
         ),
       ),
     );
@@ -701,8 +698,8 @@ void main() {
         textDirection: TextDirection.ltr,
         child: GridView.extent(
           maxCrossAxisExtent: 1000,
-          children: <Widget>[Container(height: 2000.0)],
           clipBehavior: Clip.antiAlias,
+          children: <Widget>[Container(height: 2000.0)],
         ),
       ),
     );
@@ -726,7 +723,7 @@ void main() {
             return Builder(
               builder: (BuildContext context) {
                 return Text('$i');
-              }
+              },
             );
           }),
         ),
@@ -752,7 +749,7 @@ void main() {
             return Builder(
               builder: (BuildContext context) {
                 return Text('$i');
-              }
+              },
             );
           }),
         ),
@@ -770,7 +767,7 @@ void main() {
       child: GridView.extent(
         maxCrossAxisExtent: maxCrossAxisExtent,
       ),
-    ), throwsA(isA<AssertionError>()));
+    ), throwsAssertionError);
 
   });
 }

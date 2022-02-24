@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// This file is run as part of a reduced test set in CI on Mac and Windows
+// machines.
+@Tags(<String>['reduced-test-set'])
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -64,6 +68,20 @@ class ElevationColor {
 }
 
 void main() {
+  // Regression test for https://github.com/flutter/flutter/issues/81504
+  testWidgets('MaterialApp.home nullable and update test', (WidgetTester tester) async {
+    // _WidgetsAppState._usesNavigator == true
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+
+    // _WidgetsAppState._usesNavigator == false
+    await tester.pumpWidget(const MaterialApp()); // Do not crash!
+
+    // _WidgetsAppState._usesNavigator == true
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink())); // Do not crash!
+
+    expect(tester.takeException(), null);
+  });
+
   testWidgets('default Material debugFillProperties', (WidgetTester tester) async {
     final DiagnosticPropertiesBuilder builder = DiagnosticPropertiesBuilder();
     const Material().debugFillProperties(builder);
@@ -79,7 +97,6 @@ void main() {
   testWidgets('Material implements debugFillProperties', (WidgetTester tester) async {
     final DiagnosticPropertiesBuilder builder = DiagnosticPropertiesBuilder();
     const Material(
-      type: MaterialType.canvas,
       color: Color(0xFFFFFFFF),
       shadowColor: Color(0xffff0000),
       textStyle: TextStyle(color: Color(0xff00ff00)),
@@ -172,7 +189,7 @@ void main() {
     // This code verifies that the PhysicalModel's elevation animates over
     // a kThemeChangeDuration time interval.
 
-    await tester.pumpWidget(buildMaterial(elevation: 0.0));
+    await tester.pumpWidget(buildMaterial());
     final RenderPhysicalShape modelA = getModel(tester);
     expect(modelA.elevation, equals(0.0));
 
@@ -197,7 +214,7 @@ void main() {
     // This code verifies that the PhysicalModel's shadowColor animates over
     // a kThemeChangeDuration time interval.
 
-    await tester.pumpWidget(buildMaterial(shadowColor: const Color(0xFF00FF00)));
+    await tester.pumpWidget(buildMaterial());
     final RenderPhysicalShape modelA = getModel(tester);
     expect(modelA.shadowColor, equals(const Color(0xFF00FF00)));
 
@@ -348,7 +365,7 @@ void main() {
         Theme(
           data: ThemeData(
             applyElevationOverlayColor: true,
-            colorScheme: const ColorScheme.dark(surface: surfaceColor),
+            colorScheme: const ColorScheme.dark(),
           ),
           child: buildMaterial(
             color: surfaceColor.withOpacity(.75),
@@ -412,8 +429,8 @@ void main() {
         Material(
           key: materialKey,
           type: MaterialType.transparency,
-          child: const SizedBox(width: 100.0, height: 100.0),
           clipBehavior: Clip.antiAlias,
+          child: const SizedBox(width: 100.0, height: 100.0),
         ),
       );
 
@@ -427,15 +444,15 @@ void main() {
           key: materialKey,
           type: MaterialType.transparency,
           borderRadius: const BorderRadius.all(Radius.circular(10.0)),
-          child: const SizedBox(width: 100.0, height: 100.0),
           clipBehavior: Clip.antiAlias,
+          child: const SizedBox(width: 100.0, height: 100.0),
         ),
       );
 
       expect(
         find.byKey(materialKey),
         clipsWithBoundingRRect(
-          borderRadius: const BorderRadius.all(Radius.circular(10.0))
+          borderRadius: const BorderRadius.all(Radius.circular(10.0)),
         ),
       );
     });
@@ -447,8 +464,8 @@ void main() {
           key: materialKey,
           type: MaterialType.transparency,
           shape: const StadiumBorder(),
-          child: const SizedBox(width: 100.0, height: 100.0),
           clipBehavior: Clip.antiAlias,
+          child: const SizedBox(width: 100.0, height: 100.0),
         ),
       );
 
@@ -467,8 +484,8 @@ void main() {
         return Material(
           type: MaterialType.transparency,
           shape: shape,
-          child: const SizedBox(width: 100.0, height: 100.0),
           clipBehavior: Clip.antiAlias,
+          child: const SizedBox(width: 100.0, height: 100.0),
         );
       }
       final Widget material = buildMaterial();
@@ -530,7 +547,6 @@ void main() {
       await tester.pumpWidget(
         Material(
           key: materialKey,
-          type: MaterialType.canvas,
           child: const SizedBox(width: 100.0, height: 100.0),
         ),
       );
@@ -547,10 +563,9 @@ void main() {
       await tester.pumpWidget(
         Material(
           key: materialKey,
-          type: MaterialType.canvas,
           borderRadius: const BorderRadius.all(Radius.circular(5.0)),
-          child: const SizedBox(width: 100.0, height: 100.0),
           elevation: 1.0,
+          child: const SizedBox(width: 100.0, height: 100.0),
         ),
       );
 
@@ -566,10 +581,9 @@ void main() {
       await tester.pumpWidget(
         Material(
           key: materialKey,
-          type: MaterialType.canvas,
           shape: const StadiumBorder(),
-          child: const SizedBox(width: 100.0, height: 100.0),
           elevation: 1.0,
+          child: const SizedBox(width: 100.0, height: 100.0),
         ),
       );
 
@@ -639,8 +653,8 @@ void main() {
         Material(
           key: materialKey,
           type: MaterialType.circle,
-          child: const SizedBox(width: 100.0, height: 100.0),
           color: const Color(0xFF0000FF),
+          child: const SizedBox(width: 100.0, height: 100.0),
         ),
       );
 
@@ -656,8 +670,8 @@ void main() {
         Material(
           key: materialKey,
           type: MaterialType.button,
-          child: const SizedBox(width: 100.0, height: 100.0),
           color: const Color(0xFF0000FF),
+          child: const SizedBox(width: 100.0, height: 100.0),
         ),
       );
 
@@ -674,10 +688,10 @@ void main() {
         Material(
           key: materialKey,
           type: MaterialType.button,
-          child: const SizedBox(width: 100.0, height: 100.0),
           color: const Color(0xFF0000FF),
           borderRadius: const BorderRadius.all(Radius.circular(6.0)),
           elevation: 4.0,
+          child: const SizedBox(width: 100.0, height: 100.0),
         ),
       );
 
@@ -694,10 +708,10 @@ void main() {
         Material(
           key: materialKey,
           type: MaterialType.button,
-          child: const SizedBox(width: 100.0, height: 100.0),
           color: const Color(0xFF0000FF),
           shape: const StadiumBorder(),
           elevation: 4.0,
+          child: const SizedBox(width: 100.0, height: 100.0),
         ),
       );
 
@@ -715,7 +729,6 @@ void main() {
         Material(
           key: materialKey,
           type: MaterialType.button,
-          child: const SizedBox(width: 100.0, height: 100.0),
           color: const Color(0xFF0000FF),
           shape: const CircleBorder(
             side: BorderSide(
@@ -723,6 +736,7 @@ void main() {
               color: Color(0xFF0000FF),
             ),
           ),
+          child: const SizedBox(width: 100.0, height: 100.0),
         ),
       );
 
@@ -736,13 +750,13 @@ void main() {
         Material(
           key: materialKey,
           type: MaterialType.transparency,
-          child: const SizedBox(width: 100.0, height: 100.0),
           shape: const CircleBorder(
             side: BorderSide(
               width: 2.0,
               color: Color(0xFF0000FF),
             ),
           ),
+          child: const SizedBox(width: 100.0, height: 100.0),
         ),
       );
 
@@ -756,8 +770,8 @@ void main() {
         Material(
           key: materialKey,
           type: MaterialType.transparency,
-          child: const SizedBox(width: 100.0, height: 100.0),
           shape: const CircleBorder(),
+          child: const SizedBox(width: 100.0, height: 100.0),
         ),
       );
 
@@ -778,10 +792,9 @@ void main() {
                 height: 300,
                 child: Material(
                   clipBehavior: Clip.hardEdge,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    side: const BorderSide(color: Colors.grey, width: 6),
-                    borderRadius: BorderRadius.circular(8),
+                  shape: const RoundedRectangleBorder(
+                    side: BorderSide(color: Colors.grey, width: 6),
+                    borderRadius: BorderRadius.all(Radius.circular(8)),
                   ),
                   child: Column(
                     children: <Widget>[
@@ -817,10 +830,9 @@ void main() {
                 height: 300,
                 child: Material(
                   clipBehavior: Clip.hardEdge,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    side: const BorderSide(color: Colors.grey, width: 6),
-                    borderRadius: BorderRadius.circular(8),
+                  shape: const RoundedRectangleBorder(
+                    side: BorderSide(color: Colors.grey, width: 6),
+                    borderRadius: BorderRadius.all(Radius.circular(8)),
                   ),
                   borderOnForeground: false,
                   child: Column(

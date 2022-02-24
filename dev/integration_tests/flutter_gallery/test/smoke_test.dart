@@ -6,9 +6,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_gallery/gallery/demos.dart';
 import 'package:flutter_gallery/gallery/app.dart' show GalleryApp;
+import 'package:flutter_gallery/gallery/demos.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 // This title is visible on the home and demo category pages. It's
 // not visible when the demos are running.
@@ -118,7 +118,7 @@ Future<void> smokeOptionsPage(WidgetTester tester) async {
   // Switch back to system theme setting: first menu button, choose 'System Default'
   await tester.tap(find.byIcon(Icons.arrow_drop_down).first);
   await tester.pumpAndSettle();
-  await tester.tap(find.text('System Default').at(1));
+  await tester.tap(find.text('System Default').at(1), warnIfMissed: false); // https://github.com/flutter/flutter/issues/82908
   await tester.pumpAndSettle();
 
   // Switch text direction: first switch
@@ -162,7 +162,7 @@ Future<void> smokeGallery(WidgetTester tester) async {
     await tester.tap(find.text(category.name));
     await tester.pumpAndSettle();
     for (final GalleryDemo demo in kGalleryCategoryToDemos[category]!) {
-      await Scrollable.ensureVisible(tester.element(find.text(demo.title)), alignment: 0.0);
+      await Scrollable.ensureVisible(tester.element(find.text(demo.title)));
       await smokeDemo(tester, demo);
       tester.binding.debugAssertNoTransientCallbacks('A transient callback was still active after running $demo');
     }
@@ -176,7 +176,11 @@ Future<void> smokeGallery(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('Flutter Gallery app smoke test', smokeGallery);
+  testWidgets(
+    'Flutter Gallery app smoke test',
+    smokeGallery,
+    variant: const TargetPlatformVariant(<TargetPlatform>{ TargetPlatform.android, TargetPlatform.macOS }),
+  );
 
   testWidgets('Flutter Gallery app smoke test with semantics', (WidgetTester tester) async {
     RendererBinding.instance!.setSemanticsEnabled(true);

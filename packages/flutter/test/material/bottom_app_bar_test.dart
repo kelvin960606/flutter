@@ -2,9 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
+// This file is run as part of a reduced test set in CI on Mac and Windows
+// machines.
+@Tags(<String>['reduced-test-set'])
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('no overlap with floating action button', (WidgetTester tester) async {
@@ -53,14 +57,14 @@ void main() {
                   onPressed: () { },
                 ),
                 floatingActionButtonLocation: location,
-                bottomNavigationBar: BottomAppBar(
+                bottomNavigationBar: const BottomAppBar(
                   shape: AutomaticNotchedShape(
-                    BeveledRectangleBorder(borderRadius: BorderRadius.circular(50.0)),
-                    ContinuousRectangleBorder(borderRadius: BorderRadius.circular(30.0)),
+                    BeveledRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(50.0))),
+                    ContinuousRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(30.0))),
                   ),
                   notchMargin: 10.0,
                   color: Colors.green,
-                  child: const SizedBox(height: 100.0),
+                  child: SizedBox(height: 100.0),
                 ),
               ),
             ),
@@ -79,8 +83,7 @@ void main() {
       find.byKey(key),
       matchesGoldenFile('bottom_app_bar.custom_shape.2.png'),
     );
-  }, skip: isBrowser); // https://github.com/flutter/flutter/issues/51675,
-  // https://github.com/flutter/flutter/issues/44572
+  }, skip: isBrowser); // https://github.com/flutter/flutter/issues/44572
 
   testWidgets('color defaults to Theme.bottomAppBarColor', (WidgetTester tester) async {
     await tester.pumpWidget(
@@ -96,7 +99,7 @@ void main() {
                 bottomNavigationBar: BottomAppBar(),
               ),
             );
-          }
+          },
         ),
       ),
     );
@@ -119,11 +122,11 @@ void main() {
                   onPressed: null,
                 ),
                 bottomNavigationBar: BottomAppBar(
-                  color: Color(0xff0000ff)
+                  color: Color(0xff0000ff),
                 ),
               ),
             );
-          }
+          },
         ),
       ),
     );
@@ -143,7 +146,7 @@ void main() {
             color: const ColorScheme.dark().surface,
           ),
         ),
-      )
+      ),
     );
 
     final PhysicalShape physicalShape = tester.widget(find.byType(PhysicalShape).at(0));
@@ -169,9 +172,7 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          bottomNavigationBar: BottomAppBar(
-            shape: null,
-          ),
+          bottomNavigationBar: BottomAppBar(),
         ),
       ),
     );
@@ -191,9 +192,7 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          bottomNavigationBar: ShapeListener(BottomAppBar(
-            shape: null,
-          )),
+          bottomNavigationBar: ShapeListener(BottomAppBar()),
           floatingActionButton: FloatingActionButton(
             onPressed: null,
             child: Icon(Icons.add),
@@ -225,9 +224,9 @@ void main() {
         home: Scaffold(
           bottomNavigationBar: ShapeListener(
             BottomAppBar(
-              child: SizedBox(height: 100.0),
               shape: RectangularNotch(),
               notchMargin: 0.0,
+              child: SizedBox(height: 100.0),
             ),
           ),
           floatingActionButton: FloatingActionButton(
@@ -277,9 +276,9 @@ void main() {
         home: Scaffold(
           bottomNavigationBar: ShapeListener(
             BottomAppBar(
-              child: SizedBox(height: 100.0),
               shape: RectangularNotch(),
               notchMargin: 6.0,
+              child: SizedBox(height: 100.0),
             ),
           ),
           floatingActionButton: FloatingActionButton(
@@ -351,12 +350,11 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          bottomNavigationBar:
-              BottomAppBar(
-                child: SizedBox(height: 100.0),
-                shape: RectangularNotch(),
-                notchMargin: 0.0,
-              ),
+          bottomNavigationBar: BottomAppBar(
+            shape: RectangularNotch(),
+            notchMargin: 0.0,
+            child: SizedBox(height: 100.0),
+          ),
         ),
       ),
     );
@@ -369,10 +367,10 @@ void main() {
         home: Scaffold(
           bottomNavigationBar:
           BottomAppBar(
-            child: SizedBox(height: 100.0),
             shape: RectangularNotch(),
             notchMargin: 0.0,
             clipBehavior: Clip.antiAliasWithSaveLayer,
+            child: SizedBox(height: 100.0),
           ),
         ),
       ),
@@ -380,6 +378,101 @@ void main() {
 
     physicalShape = tester.widget(find.byType(PhysicalShape));
     expect(physicalShape.clipBehavior, Clip.antiAliasWithSaveLayer);
+  });
+
+  testWidgets('BottomAppBar with shape when Scaffold.bottomNavigationBar == null', (WidgetTester tester) async {
+    // Regression test for https://github.com/flutter/flutter/issues/80878
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+          floatingActionButton: FloatingActionButton(
+            backgroundColor: Colors.green,
+            child: const Icon(Icons.home),
+            onPressed: () {},
+          ),
+          body: Stack(
+            children: <Widget>[
+              Container(
+                color: Colors.amber,
+              ),
+              Container(
+                alignment: Alignment.bottomCenter,
+                child: BottomAppBar(
+                  color: Colors.green,
+                  shape: const CircularNotchedRectangle(),
+                  child: Container(height: 50),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.getRect(find.byType(FloatingActionButton)), const Rect.fromLTRB(372, 528, 428, 584));
+    expect(tester.getSize(find.byType(BottomAppBar)), const Size(800, 50));
+  });
+
+  testWidgets('notch with margin and top padding, home safe area', (WidgetTester tester) async {
+    // Regression test for https://github.com/flutter/flutter/issues/90024
+    await tester.pumpWidget(
+      const MediaQuery(
+        data: MediaQueryData(
+          padding: EdgeInsets.only(top: 128),
+        ),
+        child: MaterialApp(
+          useInheritedMediaQuery: true,
+          home: SafeArea(
+            child: Scaffold(
+              bottomNavigationBar: ShapeListener(
+                BottomAppBar(
+                  shape: RectangularNotch(),
+                  notchMargin: 6.0,
+                  child: SizedBox(height: 100.0),
+                ),
+              ),
+              floatingActionButton: FloatingActionButton(
+                onPressed: null,
+                child: Icon(Icons.add),
+              ),
+              floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final ShapeListenerState shapeListenerState = tester.state(find.byType(ShapeListener));
+    final RenderBox babBox = tester.renderObject(find.byType(BottomAppBar));
+    final Size babSize = babBox.size;
+    final RenderBox fabBox = tester.renderObject(find.byType(FloatingActionButton));
+    final Size fabSize = fabBox.size;
+
+    final double fabLeft = (babSize.width / 2.0) - (fabSize.width / 2.0) - 6.0;
+    final double fabRight = fabLeft + fabSize.width + 6.0;
+    final double fabBottom = 6.0 + fabSize.height / 2.0;
+
+    final Path expectedPath = Path()
+      ..moveTo(0.0, 0.0)
+      ..lineTo(fabLeft, 0.0)
+      ..lineTo(fabLeft, fabBottom)
+      ..lineTo(fabRight, fabBottom)
+      ..lineTo(fabRight, 0.0)
+      ..lineTo(babSize.width, 0.0)
+      ..lineTo(babSize.width, babSize.height)
+      ..lineTo(0.0, babSize.height)
+      ..close();
+
+    final Path actualPath = shapeListenerState.cache.value;
+
+    expect(
+      actualPath,
+      coversSameAreaAs(
+        expectedPath,
+        areaToCompare: (Offset.zero & babSize).inflate(5.0),
+      ),
+    );
   });
 }
 
@@ -433,8 +526,8 @@ class ShapeListenerState extends State<ShapeListener> {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      child: widget.child,
       painter: cache,
+      child: widget.child,
     );
   }
 

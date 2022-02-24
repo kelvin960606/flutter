@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'states.dart';
 
@@ -44,7 +44,7 @@ void main() {
     expect(realOffset(), equals(controller.offset));
 
     controller.animateTo(326.0, duration: const Duration(milliseconds: 300), curve: Curves.ease);
-    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
 
     expect(controller.offset, equals(326.0));
     expect(realOffset(), equals(controller.offset));

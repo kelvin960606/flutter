@@ -36,9 +36,9 @@ class FloatToken extends NumberToken {
   static double _parse(String stringRep) {
     String toParse = stringRep;
     if (toParse.startsWith('.'))
-      toParse = '0' + toParse;
+      toParse = '0$toParse';
     if (toParse.endsWith('.'))
-      toParse = toParse + '0';
+      toParse = '${toParse}0';
     return double.parse(toParse);
   }
 }
@@ -136,7 +136,7 @@ class CalcExpression {
   /// in the calculator's display panel.
   @override
   String toString() {
-    final StringBuffer buffer = StringBuffer('');
+    final StringBuffer buffer = StringBuffer();
     buffer.writeAll(_list);
     return buffer.toString();
   }
@@ -189,7 +189,8 @@ class CalcExpression {
       case ExpressionState.LeadingNeg:
       case ExpressionState.Number:
         final ExpressionToken last = outList.removeLast()!;
-        newToken = FloatToken(last.stringRep! + '.');
+        final String value = last.stringRep!;
+        newToken = FloatToken('$value.');
         break;
       case ExpressionState.Point:
       case ExpressionState.NumberWithPoint:
@@ -256,8 +257,6 @@ class CalcExpression {
       case ExpressionState.NumberWithPoint:
       case ExpressionState.Result:
         return appendOperation(Operation.Subtraction);
-      default:
-        return null;
     }
   }
 

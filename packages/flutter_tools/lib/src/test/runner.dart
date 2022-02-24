@@ -124,6 +124,7 @@ class _FlutterTestRunnerImpl implements FlutterTestRunner {
         '--total-shards=$totalShards',
       if (shardIndex != null)
         '--shard-index=$shardIndex',
+      '--chain-stack-traces',
     ];
     if (web) {
       final String tempBuildDir = globals.fs.systemTempDirectory
@@ -154,8 +155,6 @@ class _FlutterTestRunnerImpl implements FlutterTestRunner {
       testWrapper.registerPlatformPlugin(
         <Runtime>[Runtime.chrome],
         () {
-          // TODO(jonahwilliams): refactor this into a factory that handles
-          // providing dependencies.
           return FlutterWebPlatform.start(
             flutterProject.directory.path,
             updateGoldens: updateGoldens,
@@ -168,6 +167,7 @@ class _FlutterTestRunnerImpl implements FlutterTestRunner {
             logger: globals.logger,
             fileSystem: globals.fs,
             artifacts: globals.artifacts,
+            processManager: globals.processManager,
             chromiumLauncher: ChromiumLauncher(
               fileSystem: globals.fs,
               platform: globals.platform,
@@ -176,6 +176,7 @@ class _FlutterTestRunnerImpl implements FlutterTestRunner {
               browserFinder: findChromeExecutable,
               logger: globals.logger,
             ),
+            cache: globals.cache,
           );
         },
       );

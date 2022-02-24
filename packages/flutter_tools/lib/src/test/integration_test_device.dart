@@ -14,7 +14,7 @@ import '../application_package.dart';
 import '../base/common.dart';
 import '../build_info.dart';
 import '../device.dart';
-import '../globals_null_migrated.dart' as globals;
+import '../globals.dart' as globals;
 import '../vmservice.dart';
 import 'test_device.dart';
 
@@ -41,7 +41,7 @@ class IntegrationTestTestDevice implements TestDevice {
 
   /// Starts the device.
   ///
-  /// [entrypointPath] must be a path to an uncompiled source file.
+  /// [entrypointPath] must be a path to an un-compiled source file.
   @override
   Future<StreamChannel<String>> start(String entrypointPath) async {
     final TargetPlatform targetPlatform = await device.targetPlatform;
@@ -76,7 +76,9 @@ class IntegrationTestTestDevice implements TestDevice {
     );
 
     globals.printTrace('test $id: Finding the correct isolate with the integration test service extension');
-    final vm_service.IsolateRef isolateRef = await vmService.findExtensionIsolate(kIntegrationTestMethod);
+    final vm_service.IsolateRef isolateRef = await vmService.findExtensionIsolate(
+      kIntegrationTestMethod,
+    );
 
     await vmService.service.streamListen(vm_service.EventStreams.kExtension);
     final Stream<String> remoteMessages = vmService.service.onExtensionEvent
@@ -95,7 +97,14 @@ class IntegrationTestTestDevice implements TestDevice {
       );
     });
 
-    unawaited(remoteMessages.pipe(controller.local.sink));
+    remoteMessages.listen(
+      (String s) => controller.local.sink.add(s),
+      onError: (Object error, StackTrace stack) => controller.local.sink.addError(error, stack),
+    );
+    unawaited(vmService.service.onDone.whenComplete(
+      () => controller.local.sink.close(),
+    ));
+
     return controller.foreign;
   }
 

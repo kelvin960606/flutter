@@ -2,8 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
+// This file is run as part of a reduced test set in CI on Mac and Windows
+// machines.
+@Tags(<String>['reduced-test-set'])
+
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 Shader createShader(Rect bounds) {
   return const LinearGradient(
@@ -18,7 +22,7 @@ Shader createShader(Rect bounds) {
 void main() {
   testWidgets('Can be constructed', (WidgetTester tester) async {
     const Widget child = SizedBox(width: 100.0, height: 100.0);
-    await tester.pumpWidget(const ShaderMask(child: child, shaderCallback: createShader));
+    await tester.pumpWidget(const ShaderMask(shaderCallback: createShader, child: child));
   });
 
   testWidgets('Bounds rect includes offset', (WidgetTester tester) async {
@@ -29,7 +33,6 @@ void main() {
     }
 
     final Widget widget = Align(
-      alignment: Alignment.center,
       child: SizedBox(
         width: 400.0,
         height: 400.0,
@@ -56,7 +59,6 @@ void main() {
           alignment: Alignment.bottomRight,
           child: ShaderMask(
             shaderCallback: (Rect bounds) => const RadialGradient(
-              center: Alignment.center,
               radius: 0.05,
               colors:  <Color>[Color(0xFFFF0000),  Color(0xFF00FF00)],
               tileMode: TileMode.mirror,
@@ -86,7 +88,6 @@ void main() {
           alignment: Alignment.topLeft,
           child: ShaderMask(
             shaderCallback: (Rect bounds) => const RadialGradient(
-              center: Alignment.center,
               radius: 0.05,
               colors:  <Color>[Color(0xFFFF0000),  Color(0xFF00FF00)],
               tileMode: TileMode.mirror,

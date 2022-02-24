@@ -4,9 +4,9 @@
 
 import 'dart:math' as math;
 
-import 'package:flutter/rendering.dart';
-import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/foundation.dart' show precisionErrorTolerance;
+import 'package:flutter/gestures.dart' show DragStartBehavior;
+import 'package:flutter/rendering.dart';
 
 import 'basic.dart';
 import 'debug.dart';
@@ -49,7 +49,7 @@ import 'viewport.dart';
 ///   const MyPageView({Key? key}) : super(key: key);
 ///
 ///   @override
-///   _MyPageViewState createState() => _MyPageViewState();
+///   State<MyPageView> createState() => _MyPageViewState();
 /// }
 ///
 /// class _MyPageViewState extends State<MyPageView> {
@@ -193,6 +193,11 @@ class PageController extends ScrollController {
     required Curve curve,
   }) {
     final _PagePosition position = this.position as _PagePosition;
+    if (position._cachedPage != null) {
+      position._cachedPage = page.toDouble();
+      return Future<void>.value();
+    }
+
     return position.animateTo(
       position.getPixelsFromPage(page.toDouble()),
       duration: duration,
@@ -206,6 +211,11 @@ class PageController extends ScrollController {
   /// without animation, and without checking if the new value is in range.
   void jumpToPage(int page) {
     final _PagePosition position = this.position as _PagePosition;
+    if (position._cachedPage != null) {
+      position._cachedPage = page.toDouble();
+      return;
+    }
+
     position.jumpTo(position.getPixelsFromPage(page.toDouble()));
   }
 
@@ -325,6 +335,10 @@ class _PagePosition extends ScrollPositionWithSingleContext implements PageMetri
 
   final int initialPage;
   double _pageToUseOnStartup;
+  // When the viewport has a zero-size, the `page` can not
+  // be retrieved by `getPageFromPixels`, so we need to cache the page
+  // for use when resizing the viewport to non-zero next time.
+  double? _cachedPage;
 
   @override
   Future<void> ensureVisible(
@@ -345,7 +359,6 @@ class _PagePosition extends ScrollPositionWithSingleContext implements PageMetri
       duration: duration,
       curve: curve,
       alignmentPolicy: alignmentPolicy,
-      targetRenderObject: null,
     );
   }
 
@@ -370,7 +383,8 @@ class _PagePosition extends ScrollPositionWithSingleContext implements PageMetri
   double get _initialPageOffset => math.max(0, viewportDimension * (viewportFraction - 1) / 2);
 
   double getPageFromPixels(double pixels, double viewportDimension) {
-    final double actual = math.max(0.0, pixels - _initialPageOffset) / math.max(1.0, viewportDimension * viewportFraction);
+    assert(viewportDimension > 0.0);
+    final double actual = math.max(0.0, pixels - _initialPageOffset) / (viewportDimension * viewportFraction);
     final double round = actual.roundToDouble();
     if ((actual - round).abs() < precisionErrorTolerance) {
       return round;
@@ -385,15 +399,17 @@ class _PagePosition extends ScrollPositionWithSingleContext implements PageMetri
   @override
   double? get page {
     assert(
-      !hasPixels || (minScrollExtent != null && maxScrollExtent != null),
+      !hasPixels || hasContentDimensions,
       'Page value is only available after content dimensions are established.',
     );
-    return !hasPixels ? null : getPageFromPixels(pixels.clamp(minScrollExtent, maxScrollExtent), viewportDimension);
+    return !hasPixels || !hasContentDimensions
+      ? null
+      : _cachedPage ?? getPageFromPixels(pixels.clamp(minScrollExtent, maxScrollExtent), viewportDimension);
   }
 
   @override
   void saveScrollOffset() {
-    PageStorage.of(context.storageContext)?.writeState(context.storageContext, getPageFromPixels(pixels, viewportDimension));
+    PageStorage.of(context.storageContext)?.writeState(context.storageContext, _cachedPage ?? getPageFromPixels(pixels, viewportDimension));
   }
 
   @override
@@ -407,7 +423,7 @@ class _PagePosition extends ScrollPositionWithSingleContext implements PageMetri
 
   @override
   void saveOffset() {
-    context.saveOffset(getPageFromPixels(pixels, viewportDimension));
+    context.saveOffset(_cachedPage ?? getPageFromPixels(pixels, viewportDimension));
   }
 
   @override
@@ -429,8 +445,20 @@ class _PagePosition extends ScrollPositionWithSingleContext implements PageMetri
     }
     final bool result = super.applyViewportDimension(viewportDimension);
     final double? oldPixels = hasPixels ? pixels : null;
-    final double page = (oldPixels == null || oldViewportDimensions == 0.0) ? _pageToUseOnStartup : getPageFromPixels(oldPixels, oldViewportDimensions!);
+    double page;
+    if (oldPixels == null) {
+      page = _pageToUseOnStartup;
+    } else if (oldViewportDimensions == 0.0) {
+      // If resize from zero, we should use the _cachedPage to recover the state.
+      page = _cachedPage!;
+    } else {
+      page = getPageFromPixels(oldPixels, oldViewportDimensions!);
+    }
     final double newPixels = getPixelsFromPage(page);
+
+    // If the viewportDimension is zero, cache the page
+    // in case the viewport is resized to be non-zero.
+    _cachedPage = (viewportDimension == 0.0) ? page : null;
 
     if (newPixels != oldPixels) {
       correctPixels(newPixels);
@@ -567,33 +595,11 @@ const PageScrollPhysics _kPagePhysics = PageScrollPhysics();
 ///
 /// {@youtube 560 315 https://www.youtube.com/watch?v=J1gE9xvph-A}
 ///
-/// {@tool dartpad --template=stateless_widget_scaffold}
-///
+/// {@tool dartpad}
 /// Here is an example of [PageView]. It creates a centered [Text] in each of the three pages
 /// which scroll horizontally.
 ///
-/// ```dart
-///  Widget build(BuildContext context) {
-///    final PageController controller = PageController(initialPage: 0);
-///    return PageView(
-///      /// [PageView.scrollDirection] defaults to [Axis.horizontal].
-///      /// Use [Axis.vertical] to scroll vertically.
-///      scrollDirection: Axis.horizontal,
-///      controller: controller,
-///      children: const <Widget>[
-///        Center(
-///          child: Text('First Page'),
-///        ),
-///        Center(
-///          child: Text('Second Page'),
-///        ),
-///        Center(
-///          child: Text('Third Page'),
-///        )
-///      ],
-///    );
-///  }
-/// ```
+/// ** See code in examples/api/lib/widgets/page_view/page_view.0.dart **
 /// {@end-tool}
 ///
 /// See also:
@@ -637,6 +643,7 @@ class PageView extends StatefulWidget {
     this.restorationId,
     this.clipBehavior = Clip.hardEdge,
     this.scrollBehavior,
+    this.padEnds = true,
   }) : assert(allowImplicitScrolling != null),
        assert(clipBehavior != null),
        controller = controller ?? _defaultPageController,
@@ -676,6 +683,7 @@ class PageView extends StatefulWidget {
     this.restorationId,
     this.clipBehavior = Clip.hardEdge,
     this.scrollBehavior,
+    this.padEnds = true,
   }) : assert(allowImplicitScrolling != null),
        assert(clipBehavior != null),
        controller = controller ?? _defaultPageController,
@@ -695,7 +703,7 @@ class PageView extends StatefulWidget {
   ///   const MyPageView({Key? key}) : super(key: key);
   ///
   ///   @override
-  ///   _MyPageViewState createState() => _MyPageViewState();
+  ///   State<MyPageView> createState() => _MyPageViewState();
   /// }
   ///
   /// class _MyPageViewState extends State<MyPageView> {
@@ -749,7 +757,7 @@ class PageView extends StatefulWidget {
   ///   final String data;
   ///
   ///   @override
-  ///   _KeepAliveState createState() => _KeepAliveState();
+  ///   State<KeepAlive> createState() => _KeepAliveState();
   /// }
   ///
   /// class _KeepAliveState extends State<KeepAlive> with AutomaticKeepAliveClientMixin{
@@ -780,6 +788,7 @@ class PageView extends StatefulWidget {
     this.restorationId,
     this.clipBehavior = Clip.hardEdge,
     this.scrollBehavior,
+    this.padEnds = true,
   }) : assert(childrenDelegate != null),
        assert(allowImplicitScrolling != null),
        assert(clipBehavior != null),
@@ -841,6 +850,10 @@ class PageView extends StatefulWidget {
   final ScrollPhysics? physics;
 
   /// Set to false to disable page snapping, useful for custom scroll behavior.
+  ///
+  /// If the [padEnds] is false and [PageController.viewportFraction] < 1.0,
+  /// the page will snap to the beginning of the viewport; otherwise, the page
+  /// will snap to the center of the viewport.
   final bool pageSnapping;
 
   /// Called whenever the page in the center of the viewport changes.
@@ -873,8 +886,19 @@ class PageView extends StatefulWidget {
   /// modified by default to not apply a [Scrollbar].
   final ScrollBehavior? scrollBehavior;
 
+  /// Whether to add padding to both ends of the list.
+  ///
+  /// If this is set to true and [PageController.viewportFraction] < 1.0, padding will be added
+  /// such that the first and last child slivers will be in the center of
+  /// the viewport when scrolled all the way to the start or end, respectively.
+  ///
+  /// If [PageController.viewportFraction] >= 1.0, this property has no effect.
+  ///
+  /// This property defaults to true and must not be null.
+  final bool padEnds;
+
   @override
-  _PageViewState createState() => _PageViewState();
+  State<PageView> createState() => _PageViewState();
 }
 
 class _PageViewState extends State<PageView> {
@@ -942,6 +966,7 @@ class _PageViewState extends State<PageView> {
               SliverFillViewport(
                 viewportFraction: widget.controller.viewportFraction,
                 delegate: widget.childrenDelegate,
+                padEnds: widget.padEnds,
               ),
             ],
           );

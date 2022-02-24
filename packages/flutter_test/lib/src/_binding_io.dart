@@ -13,8 +13,8 @@ import 'package:path/path.dart' as path;
 // ignore: deprecated_member_use
 import 'package:test_api/test_api.dart' as test_package;
 
-
 import 'binding.dart';
+import 'deprecated.dart';
 
 /// Ensure the [WidgetsBinding] is initialized.
 WidgetsBinding ensureInitialized([@visibleForTesting Map<String, String>? environment]) {
@@ -120,13 +120,13 @@ class _MockHttpClient implements HttpClient {
   void addProxyCredentials(String host, int port, String realm, HttpClientCredentials credentials) { }
 
   @override
-  set authenticate(Future<bool> Function(Uri url, String scheme, String realm)? f) { }
+  Future<bool> Function(Uri url, String scheme, String realm)? authenticate;
 
   @override
-  set authenticateProxy(Future<bool> Function(String host, int port, String scheme, String realm)? f) { }
+  Future<bool> Function(String host, int port, String scheme, String realm)? authenticateProxy;
 
   @override
-  set badCertificateCallback(bool Function(X509Certificate cert, String host, int port)? callback) { }
+  bool Function(X509Certificate cert, String host, int port)? badCertificateCallback;
 
   @override
   void close({ bool force = false }) { }
@@ -142,7 +142,7 @@ class _MockHttpClient implements HttpClient {
   }
 
   @override
-  set findProxy(String Function(Uri url)? f) { }
+  String Function(Uri url)? findProxy;
 
   @override
   Future<HttpClientRequest> get(String host, int port, String path) {

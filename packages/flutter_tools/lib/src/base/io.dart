@@ -25,6 +25,12 @@
 /// about any additional exports that you add to this file, as doing so will
 /// increase the API surface that we have to test in Flutter tools, and the APIs
 /// in `dart:io` can sometimes be hard to use in tests.
+
+// We allow `print()` in this file as a fallback for writing to the terminal via
+// regular stdout/stderr/stdio paths. Everything else in the flutter_tools
+// library should route terminal I/O through the [Stdio] class defined below.
+// ignore_for_file: avoid_print
+
 import 'dart:async';
 import 'dart:io' as io
   show
@@ -45,8 +51,8 @@ import 'dart:io' as io
     StdoutException,
     stdout;
 
-import 'package:meta/meta.dart';
 import 'package:file/file.dart';
+import 'package:meta/meta.dart';
 
 import 'async_guard.dart';
 import 'platform.dart';
@@ -102,7 +108,8 @@ export 'dart:io'
         systemEncoding,
         WebSocket,
         WebSocketException,
-        WebSocketTransformer;
+        WebSocketTransformer,
+        ZLibEncoder;
 
 /// Exits the process with the given [exitCode].
 typedef ExitFunction = void Function(int exitCode);
@@ -362,7 +369,7 @@ class Stdio {
   /// Adds [stream] to [stdout].
   Future<void> addStdoutStream(Stream<List<int>> stream) => stdout.addStream(stream);
 
-  /// Adds [srtream] to [stderr].
+  /// Adds [stream] to [stderr].
   Future<void> addStderrStream(Stream<List<int>> stream) => stderr.addStream(stream);
 }
 

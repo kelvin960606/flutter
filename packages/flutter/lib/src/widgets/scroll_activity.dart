@@ -433,7 +433,7 @@ class ScrollDragController implements Drag {
   String toString() => describeIdentity(this);
 }
 
-/// The activity a scroll view performs when a the user drags their finger
+/// The activity a scroll view performs when the user drags their finger
 /// across the screen.
 ///
 /// See also:
@@ -563,7 +563,7 @@ class BallisticScrollActivity extends ScrollActivity {
   /// and returns true if the overflow was zero.
   @protected
   bool applyMoveTo(double value) {
-    return delegate.setPixels(value) == 0.0;
+    return delegate.setPixels(value).abs() < precisionErrorTolerance;
   }
 
   void _end() {

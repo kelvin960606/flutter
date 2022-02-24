@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'dart:async';
 
 import 'package:flutter_tools/src/android/android_device.dart';
@@ -34,7 +32,7 @@ void main() {
           '-v',
           'time',
           '-T',
-          '\'$kLastLogcatTimestamp\'',
+          "'$kLastLogcatTimestamp'",
         ],
       )
     ]);
@@ -160,9 +158,9 @@ void main() {
           'time',
         ],
         completer: Completer<void>.sync(),
-        // Example stack trace from an incorrectly named application:name in the AndroidManfiest.xml
+        // Example stack trace from an incorrectly named application:name in the AndroidManifest.xml
         stdout:
-          kDummyLine +
+          '$kDummyLine'
           '05-11 12:54:46.665 E/AndroidRuntime(11787): FATAL EXCEPTION: main\n'
           '05-11 12:54:46.665 E/AndroidRuntime(11787): Process: com.example.foobar, PID: 11787\n'
           '05-11 12:54:46.665 java.lang.RuntimeException: Unable to instantiate application '
@@ -183,13 +181,16 @@ void main() {
   });
 }
 
-AndroidDevice createFakeDevice(int sdkLevel) {
+AndroidDevice createFakeDevice(int? sdkLevel) {
   return FakeAndroidDevice(
     sdkLevel.toString(),
     kLastLogcatTimestamp,
   );
 }
 
+// Unfortunately Device, despite not being immutable, has an `operator ==`.
+// Until we fix that, we have to also ignore related lints here.
+// ignore: avoid_implementing_value_types
 class FakeAndroidDevice extends Fake implements AndroidDevice {
   FakeAndroidDevice(this._apiVersion, this._lastLogcatTimestamp);
 

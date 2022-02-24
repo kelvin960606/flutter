@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// This file is run as part of a reduced test set in CI on Mac and Windows
+// machines.
+@Tags(<String>['reduced-test-set'])
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -211,7 +214,8 @@ void main() {
             textScaleFactor: 2.0,
             size: Size(111.0, 111.0),
             devicePixelRatio: 1.1,
-            padding: EdgeInsets.all(11.0)),
+            padding: EdgeInsets.all(11.0),
+          ),
           child: CircleAvatar(
             child: Builder(
               builder: (BuildContext context) {
@@ -225,7 +229,7 @@ void main() {
                 // This should be overridden to 1.0.
                 expect(data.textScaleFactor, equals(1.0));
                 return const Text('Z');
-              }
+              },
             ),
           ),
         ),

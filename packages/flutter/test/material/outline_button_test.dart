@@ -4,8 +4,8 @@
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import '../rendering/mock_canvas.dart';
 import '../widgets/semantics_tester.dart';
@@ -259,9 +259,9 @@ void main() {
         home: Scaffold(
           body: Center(
             child: OutlineButton(
-              child: const Text('OutlineButton'),
               onPressed: () {},
               focusNode: focusNode,
+              child: const Text('OutlineButton'),
             ),
           ),
         ),
@@ -294,13 +294,12 @@ void main() {
     await expectLater(tester, meetsGuideline(textContrastGuideline));
   },
     skip: isBrowser, // https://github.com/flutter/flutter/issues/44115
-    semanticsEnabled: true,
   );
 
   testWidgets('OutlineButton with colored theme meets a11y contrast guidelines', (WidgetTester tester) async {
     final FocusNode focusNode = FocusNode();
 
-    final ColorScheme colorScheme = ColorScheme.fromSwatch(primarySwatch: Colors.blue);
+    final ColorScheme colorScheme = ColorScheme.fromSwatch();
 
     Color getTextColor(Set<MaterialState> states) {
       final Set<MaterialState> interactiveStates = <MaterialState>{
@@ -322,10 +321,10 @@ void main() {
               colorScheme: colorScheme,
               textTheme: ButtonTextTheme.primary,
               child: OutlineButton(
-                child: const Text('OutlineButton'),
                 onPressed: () {},
                 focusNode: focusNode,
                 textColor: MaterialStateColor.resolveWith(getTextColor),
+                child: const Text('OutlineButton'),
               ),
             ),
           ),
@@ -359,7 +358,6 @@ void main() {
     await expectLater(tester, meetsGuideline(textContrastGuideline));
   },
     skip: isBrowser, // https://github.com/flutter/flutter/issues/44115
-    semanticsEnabled: true,
   );
 
   testWidgets('OutlineButton uses stateful color for text color in different states', (WidgetTester tester) async {
@@ -388,10 +386,10 @@ void main() {
         home: Scaffold(
           body: Center(
             child: OutlineButton(
-              child: const Text('OutlineButton'),
               onPressed: () {},
               focusNode: focusNode,
               textColor: MaterialStateColor.resolveWith(getTextColor),
+              child: const Text('OutlineButton'),
             ),
           ),
         ),
@@ -514,10 +512,10 @@ void main() {
           body: Center(
             child: OutlineButton(
               onPressed: null,
-              child: const Text('OutlineButton'),
               focusNode: focusNode,
               textColor: MaterialStateColor.resolveWith(getTextColor),
               disabledTextColor: unusedDisabledTextColor,
+              child: const Text('OutlineButton'),
             ),
           ),
         ),
@@ -559,10 +557,10 @@ void main() {
         home: Scaffold(
           body: Center(
             child: OutlineButton(
-              child: const Text('OutlineButton'),
               onPressed: () {},
               focusNode: focusNode,
               borderSide: BorderSide(color: MaterialStateColor.resolveWith(getBorderColor)),
+              child: const Text('OutlineButton'),
             ),
           ),
         ),
@@ -613,10 +611,10 @@ void main() {
         home: Scaffold(
           body: Center(
             child: OutlineButton(
-              child: const Text('OutlineButton'),
               onPressed: () {},
               borderSide: BorderSide(color: MaterialStateColor.resolveWith(getBorderColor)),
               highlightedBorderColor: ignoredPressedColor,
+              child: const Text('OutlineButton'),
             ),
           ),
         ),
@@ -651,10 +649,10 @@ void main() {
         home: Scaffold(
           body: Center(
             child: OutlineButton(
-              child: const Text('OutlineButton'),
               onPressed: null,
               borderSide: BorderSide(color: MaterialStateColor.resolveWith(getBorderColor)),
               highlightedBorderColor: ignoredDisabledColor,
+              child: const Text('OutlineButton'),
             ),
           ),
         ),
@@ -674,9 +672,9 @@ void main() {
       return Directionality(
         textDirection: TextDirection.ltr,
         child: OutlineButton(
-          child: const Text('button'),
           onPressed: onPressed,
           onLongPress: onLongPress,
+          child: const Text('button'),
         ),
       );
     }
@@ -684,7 +682,7 @@ void main() {
     // onPressed not null, onLongPress null.
     wasPressed = false;
     await tester.pumpWidget(
-      buildFrame(onPressed: () { wasPressed = true; }, onLongPress: null),
+      buildFrame(onPressed: () { wasPressed = true; }),
     );
     outlineButton = find.byType(OutlineButton);
     expect(tester.widget<OutlineButton>(outlineButton).enabled, true);
@@ -694,7 +692,7 @@ void main() {
     // onPressed null, onLongPress not null.
     wasPressed = false;
     await tester.pumpWidget(
-      buildFrame(onPressed: null, onLongPress: () { wasPressed = true; }),
+      buildFrame(onLongPress: () { wasPressed = true; }),
     );
     outlineButton = find.byType(OutlineButton);
     expect(tester.widget<OutlineButton>(outlineButton).enabled, true);
@@ -703,7 +701,7 @@ void main() {
 
     // onPressed null, onLongPress null.
     await tester.pumpWidget(
-      buildFrame(onPressed: null, onLongPress: null),
+      buildFrame(),
     );
     outlineButton = find.byType(OutlineButton);
     expect(tester.widget<OutlineButton>(outlineButton).enabled, false);
@@ -772,15 +770,15 @@ void main() {
 
     // Pump a button with a null onPressed callback to make it disabled.
     await tester.pumpWidget(
-      buildFrame(onPressed: null),
+      buildFrame(),
     );
 
     // Expect that the button is disabled and painted with the disabled border color.
     expect(tester.widget<OutlineButton>(outlineButton).enabled, false);
     expect(
       outlineButton,
-      paints
-        ..path(color: disabledBorderColor, strokeWidth: borderWidth));
+      paints..path(color: disabledBorderColor, strokeWidth: borderWidth),
+    );
     _checkPhysicalLayer(
       tester.element(outlineButton),
       const Color(0x00000000),
@@ -800,8 +798,8 @@ void main() {
     expect(tester.widget<OutlineButton>(outlineButton).enabled, true);
     expect(
       outlineButton,
-      paints
-        ..path(color: borderColor, strokeWidth: borderWidth));
+      paints..path(color: borderColor, strokeWidth: borderWidth),
+    );
     // initially, the interior of the button is transparent
     _checkPhysicalLayer(
       tester.element(outlineButton),
@@ -818,8 +816,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
     expect(
       outlineButton,
-      paints
-        ..path(color: highlightedBorderColor, strokeWidth: borderWidth));
+      paints..path(color: highlightedBorderColor, strokeWidth: borderWidth),
+    );
     _checkPhysicalLayer(
       tester.element(outlineButton),
       fillColor.withAlpha(0xFF),
@@ -832,8 +830,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       outlineButton,
-      paints
-        ..path(color: borderColor, strokeWidth: borderWidth));
+      paints..path(color: borderColor, strokeWidth: borderWidth),
+    );
     _checkPhysicalLayer(
       tester.element(outlineButton),
       fillColor.withAlpha(0x00),
@@ -860,8 +858,8 @@ void main() {
     );
 
     expect(
-        tester.renderObject(find.byKey(buttonKey)),
-        paintsExactlyCountTimes(#clipPath, 0),
+      tester.renderObject(find.byKey(buttonKey)),
+      paintsExactlyCountTimes(#clipPath, 0),
     );
   });
 
@@ -912,7 +910,7 @@ void main() {
         textDirection: TextDirection.ltr,
         child: Material(
           child: MediaQuery(
-            data: const MediaQueryData(textScaleFactor: 1.0),
+            data: const MediaQueryData(),
             child: Center(
               child: OutlineButton(
                 onPressed: () {},

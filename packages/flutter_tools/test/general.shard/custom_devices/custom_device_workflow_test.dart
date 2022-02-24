@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter_tools/src/custom_devices/custom_device_workflow.dart';
 
 import '../../src/common.dart';
@@ -11,7 +9,7 @@ import '../../src/fakes.dart';
 
 void main() {
   testWithoutContext('CustomDeviceWorkflow reports false when custom devices feature is disabled', () {
-    final CustomDeviceWorkflow workflow = CustomDeviceWorkflow(featureFlags: TestFeatureFlags(areCustomDevicesEnabled: false));
+    final CustomDeviceWorkflow workflow = CustomDeviceWorkflow(featureFlags: TestFeatureFlags());
     expect(workflow.appliesToHostPlatform, false);
     expect(workflow.canLaunchDevices, false);
     expect(workflow.canListDevices, false);

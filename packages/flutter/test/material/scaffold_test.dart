@@ -17,19 +17,20 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-          drawer: Container(
-            color: Colors.blue,
-          ),
-          onDrawerChanged: (bool isOpen) {
-            isDrawerOpen = isOpen;
-          },
-          endDrawer: Container(
-            color: Colors.green,
-          ),
-          onEndDrawerChanged: (bool isOpen) {
-            isEndDrawerOpen = isOpen;
-          },
-          body: Container()),
+        drawer: Container(
+          color: Colors.blue,
+        ),
+        onDrawerChanged: (bool isOpen) {
+          isDrawerOpen = isOpen;
+        },
+        endDrawer: Container(
+          color: Colors.green,
+        ),
+        onEndDrawerChanged: (bool isOpen) {
+          isEndDrawerOpen = isOpen;
+        },
+        body: Container(),
+      ),
     ));
 
     final ScaffoldState scaffoldState = tester.state(find.byType(Scaffold));
@@ -47,6 +48,40 @@ void main() {
     scaffoldState.openDrawer();
     await tester.pumpAndSettle();
     expect(false, isEndDrawerOpen);
+  });
+
+  testWidgets('Scaffold drawer callback test - only call when changed', (WidgetTester tester) async {
+    // Regression test for https://github.com/flutter/flutter/issues/87914
+    bool onDrawerChangedCalled = false;
+    bool onEndDrawerChangedCalled = false;
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        drawer: Container(
+          color: Colors.blue,
+        ),
+        onDrawerChanged: (bool isOpen) {
+          onDrawerChangedCalled = true;
+        },
+        endDrawer: Container(
+          color: Colors.green,
+        ),
+        onEndDrawerChanged: (bool isOpen) {
+          onEndDrawerChangedCalled = true;
+        },
+        body: Container(),
+      ),
+    ));
+
+    await tester.flingFrom(Offset.zero, const Offset(10.0, 0.0), 10.0);
+    expect(false, onDrawerChangedCalled);
+
+    await tester.pumpAndSettle();
+
+    final double width = tester.getSize(find.byType(MaterialApp)).width;
+    await tester.flingFrom(Offset(width - 1, 0.0), const Offset(-10.0, 0.0), 10.0);
+    await tester.pumpAndSettle();
+    expect(false, onEndDrawerChangedCalled);
   });
 
   testWidgets('Scaffold control test', (WidgetTester tester) async {
@@ -251,7 +286,6 @@ void main() {
     await tester.pumpWidget(
       MediaQuery(
         data: const MediaQueryData(
-          padding: EdgeInsets.zero,
           viewPadding: EdgeInsets.only(bottom: 20),
           viewInsets: EdgeInsets.only(bottom: 300),
         ),
@@ -430,7 +464,6 @@ void main() {
     await tester.pumpWidget(
       MediaQuery(
         data: const MediaQueryData(
-          padding: EdgeInsets.zero,
           viewPadding: EdgeInsets.only(bottom: 20),
           viewInsets: EdgeInsets.only(bottom: 300),
         ),
@@ -492,8 +525,59 @@ void main() {
         ),
       ),
     );
-    expect(tester.getBottomLeft(_findButtonBar()), const Offset(10.0, 560.0));
-    expect(tester.getBottomRight(_findButtonBar()), const Offset(770.0, 560.0));
+
+    final Finder buttonsBar = find.ancestor(of: find.byType(OverflowBar), matching: find.byType(Padding)).first;
+    expect(tester.getBottomLeft(buttonsBar), const Offset(10.0, 560.0));
+    expect(tester.getBottomRight(buttonsBar), const Offset(770.0, 560.0));
+  });
+
+  testWidgets('persistentFooterButtons with bottomNavigationBar apply SafeArea properly', (WidgetTester tester) async {
+    // Regression test for https://github.com/flutter/flutter/pull/92039
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            // Representing a navigational notch at the bottom of the screen
+            padding: EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 40.0),
+          ),
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: Container(
+                color: Colors.amber[500],
+                height: 5000.0,
+                child: const Text('body'),
+              ),
+            ),
+            bottomNavigationBar: BottomNavigationBar(
+              items: const <BottomNavigationBarItem>[
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home),
+                  label: 'Home',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.business),
+                  label: 'Business',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.school),
+                  label: 'School',
+                ),
+              ],
+            ),
+            persistentFooterButtons: const <Widget>[Placeholder()],
+          ),
+        ),
+      ),
+    );
+
+    final Finder buttonsBar = find.ancestor(of: find.byType(OverflowBar), matching: find.byType(Padding)).first;
+    // The SafeArea of the persistentFooterButtons should not pad below them
+    // since they are stacked on top of the bottomNavigationBar. The
+    // bottomNavigationBar will handle the padding instead.
+    // 488 represents the height of the persistentFooterButtons, with the bottom
+    // of the screen being 600. If the 40 pixels of bottom padding were being
+    // errantly applied, the buttons would be higher (448).
+    expect(tester.getTopLeft(buttonsBar), const Offset(0.0, 488.0));
   });
 
   testWidgets('Persistent bottom buttons bottom padding is not consumed by viewInsets', (WidgetTester tester) async {
@@ -519,7 +603,6 @@ void main() {
     await tester.pumpWidget(
       MediaQuery(
         data: const MediaQueryData(
-          padding: EdgeInsets.zero,
           viewPadding: EdgeInsets.only(bottom: 20),
           viewInsets: EdgeInsets.only(bottom: 300),
         ),
@@ -783,7 +866,7 @@ void main() {
                     builder: (BuildContext context) {
                       mediaQueryTop = MediaQuery.of(context).padding.top;
                       return Container(key: bodyKey);
-                    }
+                    },
                   ),
                 );
               },
@@ -974,15 +1057,15 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(tester.getRect(find.byKey(appBar)), const Rect.fromLTRB(0.0, 0.0, 800.0, 43.0));
-    expect(tester.getRect(find.byKey(body)), const Rect.fromLTRB(0.0, 43.0, 800.0, 348.0));
-    expect(tester.getRect(find.byKey(floatingActionButton)), rectMoreOrLessEquals(const Rect.fromLTRB(36.0, 255.0, 113.0, 332.0)));
-    expect(tester.getRect(find.byKey(persistentFooterButton)),const  Rect.fromLTRB(28.0, 357.0, 128.0, 447.0)); // Note: has 8px each top/bottom padding.
+    expect(tester.getRect(find.byKey(body)), const Rect.fromLTRB(0.0, 43.0, 800.0, 400.0));
+    expect(tester.getRect(find.byKey(floatingActionButton)), rectMoreOrLessEquals(const Rect.fromLTRB(36.0, 307.0, 113.0, 384.0)));
+    expect(tester.getRect(find.byKey(persistentFooterButton)),const  Rect.fromLTRB(28.0, 417.0, 128.0, 507.0)); // Note: has 8px each top/bottom padding.
     expect(tester.getRect(find.byKey(drawer)), const Rect.fromLTRB(596.0, 0.0, 800.0, 600.0));
     expect(tester.getRect(find.byKey(bottomNavigationBar)), const Rect.fromLTRB(0.0, 515.0, 800.0, 600.0));
     expect(tester.getRect(find.byKey(insideAppBar)), const Rect.fromLTRB(20.0, 30.0, 750.0, 43.0));
-    expect(tester.getRect(find.byKey(insideBody)), const Rect.fromLTRB(20.0, 43.0, 750.0, 348.0));
-    expect(tester.getRect(find.byKey(insideFloatingActionButton)), rectMoreOrLessEquals(const Rect.fromLTRB(36.0, 255.0, 113.0, 332.0)));
-    expect(tester.getRect(find.byKey(insidePersistentFooterButton)), const Rect.fromLTRB(28.0, 357.0, 128.0, 447.0));
+    expect(tester.getRect(find.byKey(insideBody)), const Rect.fromLTRB(20.0, 43.0, 750.0, 400.0));
+    expect(tester.getRect(find.byKey(insideFloatingActionButton)), rectMoreOrLessEquals(const Rect.fromLTRB(36.0, 307.0, 113.0, 384.0)));
+    expect(tester.getRect(find.byKey(insidePersistentFooterButton)), const Rect.fromLTRB(28.0, 417.0, 128.0, 507.0));
     expect(tester.getRect(find.byKey(insideDrawer)), const Rect.fromLTRB(596.0, 30.0, 750.0, 540.0));
     expect(tester.getRect(find.byKey(insideBottomNavigationBar)), const Rect.fromLTRB(20.0, 515.0, 750.0, 540.0));
   });
@@ -1174,7 +1257,6 @@ void main() {
       await tester.pumpWidget(
         MediaQuery(
           data: const MediaQueryData(
-            padding: EdgeInsets.zero,
             viewPadding: EdgeInsets.only(bottom: 20),
             viewInsets: EdgeInsets.only(bottom: 300),
           ),
@@ -1364,7 +1446,6 @@ void main() {
         MaterialApp(
           home: SafeArea(
             left: false,
-            top: true,
             right: false,
             bottom: false,
             child: Scaffold(
@@ -1421,7 +1502,6 @@ void main() {
         MaterialApp(
           home: SafeArea(
             left: false,
-            top: true,
             right: false,
             bottom: false,
             child: Scaffold(
@@ -1640,7 +1720,6 @@ void main() {
           drawer: const Drawer(
             child: Text('Drawer'),
           ),
-          drawerEnableOpenDragGesture: true,
           body: const Text('Scaffold Body'),
           appBar: AppBar(
             centerTitle: true,
@@ -1709,14 +1788,13 @@ void main() {
               endDrawer: const Drawer(
                 child: Text('Drawer'),
               ),
-              endDrawerEnableOpenDragGesture: true,
               body: const Text('Scaffold Body'),
               appBar: AppBar(
                 centerTitle: true,
                 title: const Text('Title'),
               ),
             );
-          }
+          },
         ),
       ),
     );
@@ -1841,7 +1919,7 @@ void main() {
             final ThemeData themeData = Theme.of(context);
             return Container(
               decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: themeData.disabledColor))
+                border: Border(top: BorderSide(color: themeData.disabledColor)),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(32.0),
@@ -1867,11 +1945,12 @@ void main() {
             '   showBottomSheet().\n',
           ));
         }
-      }
+      },
     );
 
-    testWidgets('didUpdate bottomSheet while a previous bottom sheet is still displayed',
-        (WidgetTester tester) async {
+    testWidgets(
+      'didUpdate bottomSheet while a previous bottom sheet is still displayed',
+      (WidgetTester tester) async {
         final GlobalKey<ScaffoldState> key = GlobalKey<ScaffoldState>();
         const Key buttonKey = Key('button');
         final List<FlutterErrorDetails> errors = <FlutterErrorDetails>[];
@@ -1889,11 +1968,11 @@ void main() {
                     onPressed: () {
                       state += 1;
                       setState(() {});
-                    }
+                    },
                   ),
                   bottomSheet: state == 0 ? null : const SizedBox(),
                 );
-              }
+              },
             ),
           ),
         );
@@ -1918,9 +1997,11 @@ void main() {
           '   displayed with showBottomSheet() is still visible.\n'
           '   Use the PersistentBottomSheetController returned by\n'
           '   showBottomSheet() to close the old bottom sheet before creating a\n'
-          '   Scaffold with a (non null) bottomSheet.\n'
+          '   Scaffold with a (non null) bottomSheet.\n',
         );
-    });
+        await tester.pumpAndSettle();
+      },
+    );
 
     testWidgets('Call to Scaffold.of() without context', (WidgetTester tester) async {
       await tester.pumpWidget(
@@ -1966,7 +2047,8 @@ void main() {
         ),
       );
       expect(error.diagnostics[4], isA<DiagnosticsProperty<Element>>());
-      expect(error.toStringDeep(),
+      expect(
+        error.toStringDeep(),
         'FlutterError\n'
         '   Scaffold.of() called with a context that does not contain a\n'
         '   Scaffold.\n'
@@ -1989,7 +2071,7 @@ void main() {
         '   to the Scaffold, then use the key.currentState property to obtain\n'
         '   the ScaffoldState rather than using the Scaffold.of() function.\n'
         '   The context used was:\n'
-        '     Builder\n'
+        '     Builder\n',
       );
       await tester.pumpAndSettle();
     });
@@ -2035,7 +2117,8 @@ void main() {
         ),
       );
       expect(error.diagnostics[4], isA<DiagnosticsProperty<Element>>());
-      expect(error.toStringDeep(),
+      expect(
+        error.toStringDeep(),
         'FlutterError\n'
         '   Scaffold.geometryOf() called with a context that does not contain\n'
         '   a Scaffold.\n'
@@ -2054,7 +2137,7 @@ void main() {
         '   new inner widgets, and then in these inner widgets you would use\n'
         '   Scaffold.geometryOf().\n'
         '   The context used was:\n'
-        '     Builder\n'
+        '     Builder\n',
       );
       await tester.pumpAndSettle();
     });
@@ -2068,7 +2151,6 @@ void main() {
             child: const Icon(Icons.add),
           ),
           floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
-          extendBodyBehindAppBar: false,
         ),
       ));
       final Offset defaultOffset = tester.getCenter(find.byType(FloatingActionButton));
@@ -2111,7 +2193,7 @@ void main() {
                   width: 100.0,
                 ),
               );
-            }
+            },
           ),
         ),
       ),
@@ -2148,7 +2230,7 @@ void main() {
                   width: 100.0,
                 ),
               );
-            }
+            },
           ),
         ),
       ),
@@ -2157,6 +2239,7 @@ void main() {
     FlutterError.onError = oldHandler;
 
     expect(exceptions.length, 1);
+    // ignore: avoid_dynamic_calls
     expect(exceptions.single.runtimeType, FlutterError);
     final FlutterError error = exceptions.first as FlutterError;
     expect(error.diagnostics.length, 5);
@@ -2190,13 +2273,16 @@ void main() {
       '     PhysicalModel\n'
       '     AnimatedPhysicalModel\n'
       '     Material\n'
+      '     _ScrollNotificationObserverScope\n'
+      '     NotificationListener<ScrollNotification>\n'
+      '     ScrollNotificationObserver\n'
       '     _ScaffoldScope\n'
       '     Scaffold\n'
       '     MediaQuery\n'
       '     Directionality\n'
       '     [root]\n'
       '   Typically, the ScaffoldMessenger widget is introduced by the\n'
-      '   MaterialApp at the top of your application widget tree.\n'
+      '   MaterialApp at the top of your application widget tree.\n',
     ));
   });
 
@@ -2231,7 +2317,7 @@ void main() {
                                 Navigator.pop(context, null);
                               },
                               child: const Text('Pop route'),
-                            )
+                            ),
                           ],
                         ),
                       );
@@ -2243,7 +2329,7 @@ void main() {
             ),
           ),
         ),
-      )
+      ),
     ));
 
     expect(find.text(snackBarContent), findsNothing);
@@ -2281,7 +2367,7 @@ class _GeometryListenerState extends State<_GeometryListener> {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: cache
+      painter: cache,
     );
   }
 
@@ -2361,11 +2447,4 @@ class _CustomPageRoute<T> extends PageRoute<T> {
   Widget buildTransitions(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
     return child;
   }
-}
-
-// What was the Scaffold's ButtonBar when many of these tests were written,
-// is now a Container with an OverflowBar child. The Container's size and location
-// match the original ButtonBar's size and location.
-Finder _findButtonBar() {
-  return find.ancestor(of: find.byType(OverflowBar), matching: find.byType(Container)).first;
 }

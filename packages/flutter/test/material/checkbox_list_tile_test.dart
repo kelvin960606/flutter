@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import '../rendering/mock_canvas.dart';
+import 'feedback_tester.dart';
 
 Widget wrap({ required Widget child }) {
   return MediaQuery(
@@ -132,7 +133,7 @@ void main() {
             contentPadding: EdgeInsets.fromLTRB(10, 18, 4, 2),
           ),
         ),
-      )
+      ),
     );
 
     final Rect paddingRect = tester.getRect(find.byType(SafeArea));
@@ -231,7 +232,7 @@ void main() {
 
   testWidgets('CheckboxListTile respects shape', (WidgetTester tester) async {
     const ShapeBorder shapeBorder = RoundedRectangleBorder(
-      borderRadius: BorderRadius.horizontal(right: Radius.circular(100))
+      borderRadius: BorderRadius.horizontal(right: Radius.circular(100)),
     );
 
     await tester.pumpWidget(wrap(
@@ -318,5 +319,130 @@ void main() {
 
     await tester.pumpWidget(buildFrame(activeColor: activeColor));
     expect(textColor('title'), activeColor);
+  });
+
+  testWidgets('CheckboxListTile respects checkbox side', (WidgetTester tester) async {
+    Widget buildApp(BorderSide side) {
+      return MaterialApp(
+        home: Material(
+          child: Center(
+            child: StatefulBuilder(builder: (BuildContext context, StateSetter setState) {
+              return CheckboxListTile(
+                value: false,
+                onChanged: (bool? newValue) {},
+                side: side,
+              );
+            }),
+          ),
+        ),
+      );
+    }
+    const BorderSide side1 = BorderSide(
+      color: Color(0xfff44336),
+    );
+    await tester.pumpWidget(buildApp(side1));
+    expect(tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).side, side1);
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).side, side1);
+    expect(
+      Material.of(tester.element(find.byType(Checkbox))),
+      paints
+      ..drrect(color: const Color(0xfff44336)),
+    );
+    const BorderSide side2 = BorderSide(
+      color: Color(0xff424242),
+    );
+    await tester.pumpWidget(buildApp(side2));
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).side, side2);
+    expect(
+      Material.of(tester.element(find.byType(Checkbox))),
+      paints
+      ..drrect(color: const Color(0xff424242)),
+    );
+  });
+
+  testWidgets('CheckboxListTile respects visualDensity', (WidgetTester tester) async {
+    const Key key = Key('test');
+    Future<void> buildTest(VisualDensity visualDensity) async {
+      return tester.pumpWidget(
+        wrap(
+          child: Center(
+            child: CheckboxListTile(
+              key: key,
+              value: false,
+              onChanged: (bool? value) {},
+              autofocus: true,
+              visualDensity: visualDensity,
+            ),
+          ),
+        ),
+      );
+    }
+
+    await buildTest(VisualDensity.standard);
+    final RenderBox box = tester.renderObject(find.byKey(key));
+    await tester.pumpAndSettle();
+    expect(box.size, equals(const Size(800, 56)));
+  });
+
+  testWidgets('CheckboxListTile respects focusNode', (WidgetTester tester) async {
+    final GlobalKey childKey = GlobalKey();
+    await tester.pumpWidget(
+      wrap(
+        child: Center(
+          child: CheckboxListTile(
+            value: false,
+            title: Text('A', key: childKey),
+            onChanged: (bool? value) {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    final FocusNode tileNode = Focus.of(childKey.currentContext!);
+    tileNode.requestFocus();
+    await tester.pump(); // Let the focus take effect.
+    expect(Focus.of(childKey.currentContext!).hasPrimaryFocus, isTrue);
+    expect(tileNode.hasPrimaryFocus, isTrue);
+  });
+
+  group('feedback', () {
+    late FeedbackTester feedback;
+
+    setUp(() {
+      feedback = FeedbackTester();
+    });
+
+    tearDown(() {
+      feedback.dispose();
+    });
+
+    testWidgets('CheckboxListTile respects enableFeedback', (WidgetTester tester) async {
+      Future<void> buildTest(bool enableFeedback) async {
+        return tester.pumpWidget(
+          wrap(
+            child: Center(
+              child: CheckboxListTile(
+                value: false,
+                onChanged: (bool? value) {},
+                enableFeedback: enableFeedback,
+              ),
+            ),
+          ),
+        );
+      }
+
+      await buildTest(false);
+      await tester.tap(find.byType(CheckboxListTile));
+      await tester.pump(const Duration(seconds: 1));
+      expect(feedback.clickSoundCount, 0);
+      expect(feedback.hapticCount, 0);
+
+      await buildTest(true);
+      await tester.tap(find.byType(CheckboxListTile));
+      await tester.pump(const Duration(seconds: 1));
+      expect(feedback.clickSoundCount, 1);
+      expect(feedback.hapticCount, 0);
+    });
   });
 }

@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// This file is run as part of a reduced test set in CI on Mac and Windows
+// machines.
+@Tags(<String>['reduced-test-set'])
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -45,7 +49,8 @@ Widget _withTheme(
 
 RenderParagraph _iconRenderObject(WidgetTester tester, IconData icon) {
   return tester.renderObject<RenderParagraph>(
-      find.descendant(of: find.byIcon(icon), matching: find.byType(RichText)));
+    find.descendant(of: find.byIcon(icon), matching: find.byType(RichText)),
+  );
 }
 
 void main() {
@@ -285,8 +290,7 @@ void main() {
   testWidgets('Tab bar theme - custom tab indicator', (WidgetTester tester) async {
     final TabBarTheme tabBarTheme = TabBarTheme(
       indicator: BoxDecoration(
-        border: Border.all(color: Colors.black),
-        shape: BoxShape.rectangle,
+        border: Border.all(),
       ),
     );
 
@@ -299,9 +303,9 @@ void main() {
   });
 
   testWidgets('Tab bar theme - beveled rect indicator', (WidgetTester tester) async {
-    final TabBarTheme tabBarTheme = TabBarTheme(
+    const TabBarTheme tabBarTheme = TabBarTheme(
       indicator: ShapeDecoration(
-        shape: BeveledRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+        shape: BeveledRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20.0))),
         color: Colors.black,
       ),
     );

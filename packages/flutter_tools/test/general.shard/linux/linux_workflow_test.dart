@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/features.dart';
 import 'package:flutter_tools/src/linux/linux_workflow.dart';
@@ -13,7 +11,6 @@ import '../../src/fakes.dart';
 
 void main() {
   final Platform linux = FakePlatform(
-    operatingSystem: 'linux',
     environment: <String, String>{},
   );
   final Platform notLinux = FakePlatform(
@@ -23,7 +20,7 @@ void main() {
   final FeatureFlags enabledFlags = TestFeatureFlags(
     isLinuxEnabled: true,
   );
-  final FeatureFlags disabledFlags = TestFeatureFlags(isLinuxEnabled: false);
+  final FeatureFlags disabledFlags = TestFeatureFlags();
 
   testWithoutContext('Applies to Linux platform', () {
     final LinuxWorkflow linuxWorkflow = LinuxWorkflow(

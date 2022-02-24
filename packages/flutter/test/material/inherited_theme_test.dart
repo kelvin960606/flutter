@@ -211,8 +211,8 @@ void main() {
     }
 
     Color bannerColor() {
-      return tester.widget<Container>(
-        find.descendant(of: find.byType(MaterialBanner), matching: find.byType(Container)).first,
+      return tester.widget<Material>(
+        find.descendant(of: find.byType(MaterialBanner), matching: find.byType(Material)).first,
       ).color!;
     }
 
@@ -342,14 +342,11 @@ void main() {
             ListTile(
               leading: Icon(Icons.computer, key: selectedIconKey),
               title: const Text('selected'),
-              enabled: true,
               selected: true,
             ),
             ListTile(
               leading: Icon(Icons.add, key: unselectedIconKey),
               title: const Text('unselected'),
-              enabled: true,
-              selected: false,
             ),
           ],
         ),
@@ -530,11 +527,11 @@ void main() {
     final Widget toggleButtons = Scaffold(
       body: Center(
         child: ToggleButtons(
+          isSelected: const <bool>[true, false],
           children: const <Widget>[
             Text('selected'),
             Text('unselected'),
           ],
-          isSelected: const <bool>[true, false],
           onPressed: (int index) { },
         ),
       ),
@@ -622,7 +619,7 @@ void main() {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const RaisedButton(child: Text('disabled'), onPressed: null),
+            const RaisedButton(onPressed: null, child: Text('disabled')),
             RaisedButton(child: const Text('enabled'), onPressed: () { }),
           ],
         ),

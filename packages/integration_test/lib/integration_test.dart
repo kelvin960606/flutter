@@ -6,17 +6,18 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:ui';
 
-import 'package:flutter/rendering.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:vm_service/vm_service.dart' as vm;
 import 'package:vm_service/vm_service_io.dart' as vm_io;
 
 import '_callback_io.dart' if (dart.library.html) '_callback_web.dart' as driver_actions;
 import '_extension_io.dart' if (dart.library.html) '_extension_web.dart';
 import 'common.dart';
+import 'src/channel.dart';
 
 const String _success = 'success';
 
@@ -40,7 +41,7 @@ class IntegrationTestWidgetsFlutterBinding extends LiveTestWidgetsFlutterBinding
   IntegrationTestWidgetsFlutterBinding() {
     tearDownAll(() async {
       if (!_allTestsPassed.isCompleted) {
-        _allTestsPassed.complete(true);
+        _allTestsPassed.complete(failureMethodsDetails.isEmpty);
       }
       callbackManager.cleanup();
 
@@ -51,7 +52,7 @@ class IntegrationTestWidgetsFlutterBinding extends LiveTestWidgetsFlutterBinding
       }
 
       try {
-        await _channel.invokeMethod<void>(
+        await integrationTestChannel.invokeMethod<void>(
           'allTestsFinished',
           <String, dynamic>{
             'results': results.map<String, dynamic>((String name, Object result) {
@@ -63,7 +64,7 @@ class IntegrationTestWidgetsFlutterBinding extends LiveTestWidgetsFlutterBinding
           },
         );
       } on MissingPluginException {
-        print(r'''
+        debugPrint(r'''
 Warning: integration_test plugin was not detected.
 
 If you're running the tests with `flutter drive`, please make sure your tests
@@ -83,9 +84,6 @@ https://flutter.dev/docs/testing/integration-tests#testing-on-firebase-test-lab
     reportTestException =
         (FlutterErrorDetails details, String testDescription) {
       results[testDescription] = Failure(testDescription, details.toString());
-      if (!_allTestsPassed.isCompleted) {
-        _allTestsPassed.complete(false);
-      }
       oldTestExceptionReporter(details, testDescription);
     };
   }
@@ -133,7 +131,7 @@ https://flutter.dev/docs/testing/integration-tests#testing-on-firebase-test-lab
   final Completer<bool> _allTestsPassed = Completer<bool>();
 
   @override
-  List<Failure> get failureMethodsDetails => _failures;
+  List<Failure> get failureMethodsDetails => results.values.whereType<Failure>().toList();
 
   /// Similar to [WidgetsFlutterBinding.ensureInitialized].
   ///
@@ -147,17 +145,12 @@ https://flutter.dev/docs/testing/integration-tests#testing-on-firebase-test-lab
     return WidgetsBinding.instance!;
   }
 
-  static const MethodChannel _channel =
-      MethodChannel('plugins.flutter.io/integration_test');
-
   /// Test results that will be populated after the tests have completed.
   ///
   /// Keys are the test descriptions, and values are either [_success] or
   /// a [Failure].
   @visibleForTesting
   Map<String, Object> results = <String, Object>{};
-
-  List<Failure> get _failures => results.values.whereType<Failure>().toList();
 
   /// The extra data for the reported result.
   ///
@@ -172,11 +165,29 @@ https://flutter.dev/docs/testing/integration-tests#testing-on-firebase-test-lab
   /// side.
   final CallbackManager callbackManager = driver_actions.callbackManager;
 
-  /// Taking a screenshot.
+  /// Takes a screenshot.
   ///
-  /// Called by test methods. Implementation differs for each platform.
-  Future<void> takeScreenshot(String screenshotName) async {
-    await callbackManager.takeScreenshot(screenshotName);
+  /// On Android, you need to call `convertFlutterSurfaceToImage()`, and
+  /// pump a frame before taking a screenshot.
+  Future<List<int>> takeScreenshot(String screenshotName) async {
+    reportData ??= <String, dynamic>{};
+    reportData!['screenshots'] ??= <dynamic>[];
+    final Map<String, dynamic> data = await callbackManager.takeScreenshot(screenshotName);
+    assert(data.containsKey('bytes'));
+
+    (reportData!['screenshots']! as List<dynamic>).add(data);
+    return data['bytes']! as List<int>;
+  }
+
+  /// Android only. Converts the Flutter surface to an image view.
+  /// Be aware that if you are conducting a perf test, you may not want to call
+  /// this method since the this is an expensive operation that affects the
+  /// rendering of a Flutter app.
+  ///
+  /// Once the screenshot is taken, call `revertFlutterImage()` to restore
+  /// the original Flutter surface.
+  Future<void> convertFlutterSurfaceToImage() async {
+    await callbackManager.convertFlutterSurfaceToImage();
   }
 
   /// The callback function to response the driver side input.
@@ -203,13 +214,16 @@ https://flutter.dev/docs/testing/integration-tests#testing-on-firebase-test-lab
     Future<void> Function() testBody,
     VoidCallback invariantTester, {
     String description = '',
+    @Deprecated(
+      'This parameter has no effect. Use the `timeout` parameter on `testWidgets` instead. '
+      'This feature was deprecated after v2.6.0-1.0.pre.'
+    )
     Duration? timeout,
   }) async {
     await super.runTest(
       testBody,
       invariantTester,
       description: description,
-      timeout: timeout,
     );
     results[description] ??= _success;
   }
@@ -228,8 +242,7 @@ https://flutter.dev/docs/testing/integration-tests#testing-on-firebase-test-lab
       _vmService = vmService;
     }
     if (_vmService == null) {
-      final developer.ServiceProtocolInfo info =
-          await developer.Service.getInfo();
+      final developer.ServiceProtocolInfo info = await developer.Service.getInfo();
       assert(info.serverUri != null);
       _vmService = await vm_io.vmServiceConnectUri(
         'ws://localhost:${info.serverUri!.port}${info.serverUri!.path}ws',
@@ -246,7 +259,7 @@ https://flutter.dev/docs/testing/integration-tests#testing-on-firebase-test-lab
   /// The `streams` parameter limits the recorded timeline event streams to only
   /// the ones listed. By default, all streams are recorded.
   /// See `timeline_streams` in
-  /// [Dart-SDK/runtime/vm/timeline.cc](https://github.com/dart-lang/sdk/blob/master/runtime/vm/timeline.cc)
+  /// [Dart-SDK/runtime/vm/timeline.cc](https://github.com/dart-lang/sdk/blob/main/runtime/vm/timeline.cc)
   ///
   /// If [retainPriorEvents] is true, retains events recorded prior to calling
   /// [action]. Otherwise, prior events are cleared before calling [action]. By
@@ -272,8 +285,8 @@ https://flutter.dev/docs/testing/integration-tests#testing-on-firebase-test-lab
     );
   }
 
-  /// This is a convenience wrap of [traceTimeline] and send the result back to
-  /// the host for the [flutter_driver] style tests.
+  /// This is a convenience method that calls [traceTimeline] and sends the
+  /// result back to the host for the [flutter_driver] style tests.
   ///
   /// This records the timeline during `action` and adds the result to
   /// [reportData] with `reportKey`. The [reportData] contains extra information
@@ -283,7 +296,30 @@ https://flutter.dev/docs/testing/integration-tests#testing-on-firebase-test-lab
   /// to `build/integration_response_data.json` with the key `timeline`.
   ///
   /// For tests with multiple calls of this method, `reportKey` needs to be a
-  /// unique key, otherwise the later result will override earlier one.
+  /// unique key, otherwise the later result will override earlier one. Tests
+  /// that call this multiple times must also provide a custom
+  /// [ResponseDataCallback] to decide where and how to write the output
+  /// timelines. For example,
+  ///
+  /// ```dart
+  /// import 'package:integration_test/integration_test_driver.dart';
+  ///
+  /// Future<void> main() {
+  ///   return integrationDriver(
+  ///     responseDataCallback: (data) async {
+  ///       if (data != null) {
+  ///         for (var entry in data.entries) {
+  ///           print('Writing ${entry.key} to the disk.');
+  ///           await writeResponseData(
+  ///             entry.value as Map<String, dynamic>,
+  ///             testOutputFilename: entry.key,
+  ///           );
+  ///         }
+  ///       }
+  ///     },
+  ///   );
+  /// }
+  /// ```
   ///
   /// The `streams` and `retainPriorEvents` parameters are passed as-is to
   /// [traceTimeline].
@@ -300,6 +336,29 @@ https://flutter.dev/docs/testing/integration-tests#testing-on-firebase-test-lab
     );
     reportData ??= <String, dynamic>{};
     reportData![reportKey] = timeline.toJson();
+  }
+
+  Future<_GarbageCollectionInfo> _runAndGetGCInfo(Future<void> Function() action) async {
+    if (kIsWeb) {
+      await action();
+      return const _GarbageCollectionInfo();
+    }
+
+    final vm.Timeline timeline = await traceTimeline(
+      action,
+      streams: <String>['GC'],
+    );
+
+    final int oldGenGCCount = timeline.traceEvents!.where((vm.TimelineEvent event) {
+      return event.json!['cat'] == 'GC' && event.json!['name'] == 'CollectOldGeneration';
+    }).length;
+    final int newGenGCCount = timeline.traceEvents!.where((vm.TimelineEvent event) {
+      return event.json!['cat'] == 'GC' && event.json!['name'] == 'CollectNewGeneration';
+    }).length;
+    return _GarbageCollectionInfo(
+      oldCount: oldGenGCCount,
+      newCount: newGenGCCount,
+    );
   }
 
   /// Watches the [FrameTiming] during `action` and report it to the binding
@@ -332,7 +391,7 @@ https://flutter.dev/docs/testing/integration-tests#testing-on-firebase-test-lab
         count++;
         await Future<void>.delayed(const Duration(seconds: 2));
         if (count > 20) {
-          print('delayForFrameTimings is taking longer than expected...');
+          debugPrint('delayForFrameTimings is taking longer than expected...');
         }
       }
     }
@@ -340,23 +399,22 @@ https://flutter.dev/docs/testing/integration-tests#testing-on-firebase-test-lab
     await Future<void>.delayed(const Duration(seconds: 2)); // flush old FrameTimings
     final TimingsCallback watcher = frameTimings.addAll;
     addTimingsCallback(watcher);
-    await action();
+    final _GarbageCollectionInfo gcInfo = await _runAndGetGCInfo(action);
+
     await delayForFrameTimings(); // make sure all FrameTimings are reported
     removeTimingsCallback(watcher);
-    final FrameTimingSummarizer frameTimes =
-        FrameTimingSummarizer(frameTimings);
+
+    final FrameTimingSummarizer frameTimes = FrameTimingSummarizer(
+      frameTimings,
+      newGenGCCount: gcInfo.newCount,
+      oldGenGCCount: gcInfo.oldCount,
+    );
     reportData ??= <String, dynamic>{};
     reportData![reportKey] = frameTimes.summary;
   }
 
   @override
-  Timeout get defaultTestTimeout => _defaultTestTimeout ?? super.defaultTestTimeout;
-
-  /// Configures the default timeout for [testWidgets].
-  ///
-  /// See [TestWidgetsFlutterBinding.defaultTestTimeout] for more details.
-  set defaultTestTimeout(Timeout timeout) => _defaultTestTimeout = timeout;
-  Timeout? _defaultTestTimeout;
+  Timeout defaultTestTimeout = Timeout.none;
 
   @override
   void attachRootWidget(Widget rootWidget) {
@@ -365,4 +423,27 @@ https://flutter.dev/docs/testing/integration-tests#testing-on-firebase-test-lab
     // TODO(jiahaog): Remove when https://github.com/flutter/flutter/issues/66006 is fixed.
     super.attachRootWidget(RepaintBoundary(child: rootWidget));
   }
+
+  @override
+  void reportExceptionNoticed(FlutterErrorDetails exception) {
+    // This method is called to log errors as they happen, and they will also
+    // be eventually logged again at the end of the tests. The superclass
+    // behavior is specific to the "live" execution semantics of
+    // [LiveTestWidgetsFlutterBinding] so users don't have to wait until tests
+    // finish to see the stack traces.
+    //
+    // Disable this because Integration Tests follow the semantics of
+    // [AutomatedTestWidgetsFlutterBinding] that does not log the stack traces
+    // live, and avoids the doubly logged stack trace.
+    // TODO(jiahaog): Integration test binding should not inherit from
+    // `LiveTestWidgetsFlutterBinding` https://github.com/flutter/flutter/issues/81534
+  }
+}
+
+@immutable
+class _GarbageCollectionInfo {
+  const _GarbageCollectionInfo({this.oldCount = -1, this.newCount = -1});
+
+  final int oldCount;
+  final int newCount;
 }

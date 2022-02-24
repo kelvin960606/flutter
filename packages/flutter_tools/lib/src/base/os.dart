@@ -35,6 +35,13 @@ abstract class OperatingSystemUtils {
         platform: platform,
         processManager: processManager,
       );
+    } else if (platform.isLinux) {
+      return _LinuxUtils(
+        fileSystem: fileSystem,
+        logger: logger,
+        platform: platform,
+        processManager: processManager,
+      );
     } else {
       return _PosixUtils(
         fileSystem: fileSystem,
@@ -177,20 +184,22 @@ class _PosixUtils extends OperatingSystemUtils {
 
   @override
   void chmod(FileSystemEntity entity, String mode) {
+    // Errors here are silently ignored (except when tracing).
     try {
       final ProcessResult result = _processManager.runSync(
         <String>['chmod', mode, entity.path],
       );
       if (result.exitCode != 0) {
         _logger.printTrace(
-          'Error trying to run chmod on ${entity.absolute.path}'
-          '\nstdout: ${result.stdout}'
-          '\nstderr: ${result.stderr}',
+          'Error trying to run "chmod $mode ${entity.path}":\n'
+          '  exit code: ${result.exitCode}\n'
+          '  stdout: ${result.stdout.toString().trimRight()}\n'
+          '  stderr: ${result.stderr.toString().trimRight()}'
         );
       }
     } on ProcessException catch (error) {
       _logger.printTrace(
-        'Error trying to run chmod on ${entity.absolute.path}: $error',
+        'Error trying to run "chmod $mode ${entity.path}": $error',
       );
     }
   }
@@ -215,13 +224,7 @@ class _PosixUtils extends OperatingSystemUtils {
   // unzip -o -q zipfile -d dest
   @override
   void unzip(File file, Directory targetDirectory) {
-    try {
-      _processUtils.runSync(
-        <String>['unzip', '-o', '-q', file.path, '-d', targetDirectory.path],
-        throwOnError: true,
-        verboseExceptions: true,
-      );
-    } on ArgumentError {
+    if (!_processManager.canRun('unzip')) {
       // unzip is not available. this error message is modeled after the download
       // error in bin/internal/update_dart_sdk.sh
       String message = 'Please install unzip.';
@@ -234,6 +237,11 @@ class _PosixUtils extends OperatingSystemUtils {
         'Missing "unzip" tool. Unable to extract ${file.path}.\n$message'
       );
     }
+    _processUtils.runSync(
+      <String>['unzip', '-o', '-q', file.path, '-d', targetDirectory.path],
+      throwOnError: true,
+      verboseExceptions: true,
+    );
   }
 
   // tar -xzf tarball -C dest
@@ -262,24 +270,98 @@ class _PosixUtils extends OperatingSystemUtils {
   @override
   HostPlatform get hostPlatform {
     if (_hostPlatform == null) {
-      final RunResult hostPlatformCheck =
-          _processUtils.runSync(<String>['uname', '-m']);
+      final RunResult hostPlatformCheck = _processUtils.runSync(<String>['uname', '-m']);
       // On x64 stdout is "uname -m: x86_64"
       // On arm64 stdout is "uname -m: aarch64, arm64_v8a"
       if (hostPlatformCheck.exitCode != 0) {
-        _logger.printError(
-          'Error trying to run uname -m'
-          '\nstdout: ${hostPlatformCheck.stdout}'
-          '\nstderr: ${hostPlatformCheck.stderr}',
-        );
         _hostPlatform = HostPlatform.linux_x64;
+        _logger.printError(
+          'Encountered an error trying to run "uname -m":\n'
+          '  exit code: ${hostPlatformCheck.exitCode}\n'
+          '  stdout: ${hostPlatformCheck.stdout.trimRight()}\n'
+          '  stderr: ${hostPlatformCheck.stderr.trimRight()}\n'
+          'Assuming host platform is ${getNameForHostPlatform(_hostPlatform!)}.',
+        );
       } else if (hostPlatformCheck.stdout.trim().endsWith('x86_64')) {
         _hostPlatform = HostPlatform.linux_x64;
       } else {
+        // We default to ARM if it's not x86_64 and we did not get an error.
         _hostPlatform = HostPlatform.linux_arm64;
       }
     }
     return _hostPlatform!;
+  }
+}
+
+class _LinuxUtils extends _PosixUtils {
+  _LinuxUtils({
+    required FileSystem fileSystem,
+    required Logger logger,
+    required Platform platform,
+    required ProcessManager processManager,
+  }) : super(
+          fileSystem: fileSystem,
+          logger: logger,
+          platform: platform,
+          processManager: processManager,
+        );
+
+  String? _name;
+
+  @override
+  String get name {
+    if (_name == null) {
+      const String prettyNameKey = 'PRETTY_NAME';
+      // If "/etc/os-release" doesn't exist, fallback to "/usr/lib/os-release".
+      final String osReleasePath = _fileSystem.file('/etc/os-release').existsSync()
+        ? '/etc/os-release'
+        : '/usr/lib/os-release';
+      String prettyName;
+      String kernelRelease;
+      try {
+        final String osRelease = _fileSystem.file(osReleasePath).readAsStringSync();
+        prettyName = _getOsReleaseValueForKey(osRelease, prettyNameKey);
+      } on Exception catch (e) {
+        _logger.printTrace('Failed obtaining PRETTY_NAME for Linux: $e');
+        prettyName = '';
+      }
+      try {
+        // Split the operating system version which should be formatted as
+        // "Linux kernelRelease build", by spaces.
+        final List<String> osVersionSplitted = _platform.operatingSystemVersion.split(' ');
+        if (osVersionSplitted.length < 3) {
+          // The operating system version didn't have the expected format.
+          // Initialize as an empty string.
+          kernelRelease = '';
+        } else {
+          kernelRelease = ' ${osVersionSplitted[1]}';
+        }
+      } on Exception catch (e) {
+        _logger.printTrace('Failed obtaining kernel release for Linux: $e');
+        kernelRelease = '';
+      }
+      _name = '${prettyName.isEmpty ? super.name : prettyName}$kernelRelease';
+    }
+    return _name!;
+  }
+
+  String _getOsReleaseValueForKey(String osRelease, String key) {
+    final List<String> osReleaseSplitted = osRelease.split('\n');
+    for (String entry in osReleaseSplitted) {
+      entry = entry.trim();
+      final List<String> entryKeyValuePair = entry.split('=');
+      if(entryKeyValuePair[0] == key) {
+        final String value =  entryKeyValuePair[1];
+        // Remove quotes from either end of the value if they exist
+        final String quote = value[0];
+        if (quote == "'" || quote == '"') {
+          return value.substring(0, value.length - 1).substring(1);
+        } else {
+          return value;
+        }
+      }
+    }
+    return '';
   }
 }
 
@@ -349,6 +431,45 @@ class _MacOSUtils extends _PosixUtils {
     }
     return _hostPlatform!;
   }
+
+  // unzip, then rsync
+  @override
+  void unzip(File file, Directory targetDirectory) {
+    if (!_processManager.canRun('unzip')) {
+      // unzip is not available. this error message is modeled after the download
+      // error in bin/internal/update_dart_sdk.sh
+      throwToolExit('Missing "unzip" tool. Unable to extract ${file.path}.\nConsider running "brew install unzip".');
+    }
+    if (_processManager.canRun('rsync')) {
+      final Directory tempDirectory = _fileSystem.systemTempDirectory.createTempSync('flutter_${file.basename}.');
+      try {
+        // Unzip to a temporary directory.
+        _processUtils.runSync(
+          <String>['unzip', '-o', '-q', file.path, '-d', tempDirectory.path],
+          throwOnError: true,
+          verboseExceptions: true,
+        );
+        for (final FileSystemEntity unzippedFile in tempDirectory.listSync(followLinks: false)) {
+          // rsync --delete the unzipped files so files removed from the archive are also removed from the target.
+          _processUtils.runSync(
+            <String>['rsync', '-av', '--delete', unzippedFile.path, targetDirectory.path],
+            throwOnError: true,
+            verboseExceptions: true,
+          );
+        }
+      } finally {
+        tempDirectory.deleteSync(recursive: true);
+      }
+    } else {
+      // Fall back to just unzipping.
+      _logger.printTrace('Unable to find rsync, falling back to direct unzipping.');
+      _processUtils.runSync(
+        <String>['unzip', '-o', '-q', file.path, '-d', targetDirectory.path],
+        throwOnError: true,
+        verboseExceptions: true,
+      );
+    }
+  }
 }
 
 class _WindowsUtils extends OperatingSystemUtils {
@@ -375,11 +496,7 @@ class _WindowsUtils extends OperatingSystemUtils {
 
   @override
   List<File> _which(String execName, { bool all = false }) {
-    // `where` always returns all matches, not just the first one.
-    ProcessResult result;
-    try {
-      result = _processManager.runSync(<String>['where', execName]);
-    } on ArgumentError {
+    if (!_processManager.canRun('where')) {
       // `where` could be missing if system32 is not on the PATH.
       throwToolExit(
         'Cannot find the executable for `where`. This can happen if the System32 '
@@ -388,6 +505,8 @@ class _WindowsUtils extends OperatingSystemUtils {
         'the terminal and/or IDE.'
       );
     }
+    // `where` always returns all matches, not just the first one.
+    final ProcessResult result = _processManager.runSync(<String>['where', execName]);
     if (result.exitCode != 0) {
       return const <File>[];
     }

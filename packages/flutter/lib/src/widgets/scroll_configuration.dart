@@ -14,6 +14,28 @@ import 'scrollbar.dart';
 
 const Color _kDefaultGlowColor = Color(0xFFFFFFFF);
 
+/// Device types that scrollables should accept drag gestures from by default.
+const Set<PointerDeviceKind> _kTouchLikeDeviceTypes = <PointerDeviceKind>{
+  PointerDeviceKind.touch,
+  PointerDeviceKind.stylus,
+  PointerDeviceKind.invertedStylus,
+};
+
+/// The default overscroll indicator applied on [TargetPlatform.android].
+// TODO(Piinks): Complete migration to stretch by default.
+const AndroidOverscrollIndicator _kDefaultAndroidOverscrollIndicator = AndroidOverscrollIndicator.glow;
+
+/// Types of overscroll indicators supported by [TargetPlatform.android].
+enum AndroidOverscrollIndicator {
+  /// Utilizes a [StretchingOverscrollIndicator], which transforms the contents
+  /// of a [ScrollView] when overscrolled.
+  stretch,
+
+  /// Utilizes a [GlowingOverscrollIndicator], painting a glowing semi circle on
+  /// top of the [ScrollView] in response to overscrolling.
+  glow,
+}
+
 /// Describes how [Scrollable] widgets should behave.
 ///
 /// {@template flutter.widgets.scrollBehavior}
@@ -39,7 +61,20 @@ const Color _kDefaultGlowColor = Color(0xFFFFFFFF);
 @immutable
 class ScrollBehavior {
   /// Creates a description of how [Scrollable] widgets should behave.
-  const ScrollBehavior();
+  const ScrollBehavior({
+    AndroidOverscrollIndicator? androidOverscrollIndicator,
+  }): _androidOverscrollIndicator = androidOverscrollIndicator;
+
+  /// Specifies which overscroll indicator to use on [TargetPlatform.android].
+  ///
+  /// Cannot be null. Defaults to [AndroidOverscrollIndicator.glow].
+  ///
+  /// See also:
+  ///
+  ///   * [MaterialScrollBehavior], which supports setting this property
+  ///     using [ThemeData].
+  AndroidOverscrollIndicator get androidOverscrollIndicator => _androidOverscrollIndicator ?? _kDefaultAndroidOverscrollIndicator;
+  final AndroidOverscrollIndicator? _androidOverscrollIndicator;
 
   /// Creates a copy of this ScrollBehavior, making it possible to
   /// easily toggle `scrollbar` and `overscrollIndicator` effects.
@@ -50,17 +85,21 @@ class ScrollBehavior {
   /// the widget level, like [PageView.scrollBehavior], in order to change the
   /// default.
   ScrollBehavior copyWith({
-    bool scrollbars = true,
-    bool overscroll = true,
+    bool? scrollbars,
+    bool? overscroll,
+    Set<PointerDeviceKind>? dragDevices,
     ScrollPhysics? physics,
     TargetPlatform? platform,
+    AndroidOverscrollIndicator? androidOverscrollIndicator,
   }) {
     return _WrappedScrollBehavior(
       delegate: this,
-      scrollbar: scrollbars,
-      overscrollIndicator: overscroll,
+      scrollbars: scrollbars ?? true,
+      overscroll: overscroll ?? true,
       physics: physics,
       platform: platform,
+      dragDevices: dragDevices,
+      androidOverscrollIndicator: androidOverscrollIndicator
     );
   }
 
@@ -68,6 +107,14 @@ class ScrollBehavior {
   ///
   /// Defaults to the current platform.
   TargetPlatform getPlatform(BuildContext context) => defaultTargetPlatform;
+
+  /// The device kinds that the scrollable will accept drag gestures from.
+  ///
+  /// By default only [PointerDeviceKind.touch], [PointerDeviceKind.stylus], and
+  /// [PointerDeviceKind.invertedStylus] are configured to create drag gestures.
+  /// Enabling this for [PointerDeviceKind.mouse] will make it difficult or
+  /// impossible to select text in scrollable containers and is not recommended.
+  Set<PointerDeviceKind> get dragDevices => _kTouchLikeDeviceTypes;
 
   /// Wraps the given widget, which scrolls in the given [AxisDirection].
   ///
@@ -79,7 +126,7 @@ class ScrollBehavior {
   /// instead.
   @Deprecated(
     'Migrate to buildOverscrollIndicator. '
-    'This feature was deprecated after v2.1.0-11.0.pre.'
+    'This feature was deprecated after v2.1.0-11.0.pre.',
   )
   Widget buildViewportChrome(BuildContext context, Widget child, AxisDirection axisDirection) {
     switch (getPlatform(context)) {
@@ -89,11 +136,21 @@ class ScrollBehavior {
       case TargetPlatform.windows:
         return child;
       case TargetPlatform.android:
+        switch (androidOverscrollIndicator) {
+          case AndroidOverscrollIndicator.stretch:
+            return StretchingOverscrollIndicator(
+              axisDirection: axisDirection,
+              child: child,
+            );
+          case AndroidOverscrollIndicator.glow:
+            continue glow;
+        }
+      glow:
       case TargetPlatform.fuchsia:
       return GlowingOverscrollIndicator(
-        child: child,
         axisDirection: axisDirection,
         color: _kDefaultGlowColor,
+        child: child,
       );
     }
   }
@@ -107,8 +164,8 @@ class ScrollBehavior {
       case TargetPlatform.macOS:
       case TargetPlatform.windows:
         return RawScrollbar(
-          child: child,
           controller: details.controller,
+          child: child,
         );
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
@@ -196,28 +253,40 @@ class ScrollBehavior {
 class _WrappedScrollBehavior implements ScrollBehavior {
   const _WrappedScrollBehavior({
     required this.delegate,
-    this.scrollbar = true,
-    this.overscrollIndicator = true,
+    this.scrollbars = true,
+    this.overscroll = true,
     this.physics,
     this.platform,
-  });
+    Set<PointerDeviceKind>? dragDevices,
+    AndroidOverscrollIndicator? androidOverscrollIndicator,
+  }) : _androidOverscrollIndicator = androidOverscrollIndicator,
+       _dragDevices = dragDevices;
 
   final ScrollBehavior delegate;
-  final bool scrollbar;
-  final bool overscrollIndicator;
+  final bool scrollbars;
+  final bool overscroll;
   final ScrollPhysics? physics;
   final TargetPlatform? platform;
+  final Set<PointerDeviceKind>? _dragDevices;
+  @override
+  final AndroidOverscrollIndicator? _androidOverscrollIndicator;
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => _dragDevices ?? delegate.dragDevices;
+
+  @override
+  AndroidOverscrollIndicator get androidOverscrollIndicator => _androidOverscrollIndicator ?? delegate.androidOverscrollIndicator;
 
   @override
   Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
-    if (overscrollIndicator)
+    if (overscroll)
       return delegate.buildOverscrollIndicator(context, child, details);
     return child;
   }
 
   @override
   Widget buildScrollbar(BuildContext context, Widget child, ScrollableDetails details) {
-    if (scrollbar)
+    if (scrollbars)
       return delegate.buildScrollbar(context, child, details);
     return child;
   }
@@ -229,16 +298,20 @@ class _WrappedScrollBehavior implements ScrollBehavior {
 
   @override
   ScrollBehavior copyWith({
-    bool scrollbars = true,
-    bool overscroll = true,
+    bool? scrollbars,
+    bool? overscroll,
     ScrollPhysics? physics,
     TargetPlatform? platform,
+    Set<PointerDeviceKind>? dragDevices,
+    AndroidOverscrollIndicator? androidOverscrollIndicator
   }) {
     return delegate.copyWith(
-      scrollbars: scrollbars,
-      overscroll: overscroll,
-      physics: physics,
-      platform: platform,
+      scrollbars: scrollbars ?? this.scrollbars,
+      overscroll: overscroll ?? this.overscroll,
+      physics: physics ?? this.physics,
+      platform: platform ?? this.platform,
+      dragDevices: dragDevices ?? this.dragDevices,
+      androidOverscrollIndicator: androidOverscrollIndicator ?? this.androidOverscrollIndicator,
     );
   }
 
@@ -255,10 +328,11 @@ class _WrappedScrollBehavior implements ScrollBehavior {
   @override
   bool shouldNotify(_WrappedScrollBehavior oldDelegate) {
     return oldDelegate.delegate.runtimeType != delegate.runtimeType
-        || oldDelegate.scrollbar != scrollbar
-        || oldDelegate.overscrollIndicator != overscrollIndicator
+        || oldDelegate.scrollbars != scrollbars
+        || oldDelegate.overscroll != overscroll
         || oldDelegate.physics != physics
         || oldDelegate.platform != platform
+        || setEquals<PointerDeviceKind>(oldDelegate.dragDevices, dragDevices)
         || delegate.shouldNotify(oldDelegate.delegate);
   }
 

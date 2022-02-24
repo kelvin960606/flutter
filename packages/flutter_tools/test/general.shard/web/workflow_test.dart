@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/web/workflow.dart';
 
@@ -13,7 +11,7 @@ import '../../src/fakes.dart';
 void main() {
   testWithoutContext('WebWorkflow applies on Linux', () {
     final WebWorkflow workflow = WebWorkflow(
-      platform: FakePlatform(operatingSystem: 'linux'),
+      platform: FakePlatform(),
       featureFlags: TestFeatureFlags(isWebEnabled: true),
     );
 
@@ -58,7 +56,7 @@ void main() {
 
   testWithoutContext('WebWorkflow does not apply if feature flag is disabled', () {
     final WebWorkflow workflow = WebWorkflow(
-      platform: FakePlatform(operatingSystem: 'linux'),
+      platform: FakePlatform(),
       featureFlags: TestFeatureFlags(),
     );
 

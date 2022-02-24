@@ -44,6 +44,9 @@ void main() {
             onSelectChanged: (bool? selected) {
               log.add('row-selected: ${dessert.name}');
             },
+            onLongPress: () {
+              log.add('onLongPress: ${dessert.name}');
+            },
             cells: <DataCell>[
               DataCell(
                 Text(dessert.name),
@@ -85,6 +88,11 @@ void main() {
     await tester.tap(find.text('Cupcake'));
 
     expect(log, <String>['row-selected: Cupcake']);
+    log.clear();
+
+    await tester.longPress(find.text('Cupcake'));
+
+    expect(log, <String>['onLongPress: Cupcake']);
     log.clear();
 
     await tester.tap(find.text('Calories'));
@@ -456,13 +464,13 @@ void main() {
 
     // Check for ascending list
     await tester.pumpWidget(MaterialApp(
-      home: Material(child: buildTable(sortAscending: true)),
+      home: Material(child: buildTable()),
     ));
     // The `tester.widget` ensures that there is exactly one upward arrow.
     Transform transformOfArrow = tester.widget<Transform>(find.widgetWithIcon(Transform, Icons.arrow_upward));
     expect(
       transformOfArrow.transform.getRotation(),
-      equals(Matrix3.identity())
+      equals(Matrix3.identity()),
     );
 
     // Check for descending list.
@@ -474,7 +482,7 @@ void main() {
     transformOfArrow = tester.widget<Transform>(find.widgetWithIcon(Transform, Icons.arrow_upward));
     expect(
       transformOfArrow.transform.getRotation(),
-      equals(Matrix3.rotationZ(math.pi))
+      equals(Matrix3.rotationZ(math.pi)),
     );
   });
 
@@ -1152,7 +1160,7 @@ void main() {
               DataCell(Text('A long desert name')),
             ],
           ),
-        ]
+        ],
       );
     }
 
@@ -1173,9 +1181,7 @@ void main() {
 
     // Turn on sorting
     await tester.pumpWidget(MaterialApp(
-      home: Material(child: buildTable(
-        sortEnabled: true,
-      )),
+      home: Material(child: buildTable()),
     ));
 
     {
@@ -1226,7 +1232,7 @@ void main() {
               DataCell(Text('Content2')),
             ],
           ),
-        ]
+        ],
       );
     }
 
@@ -1282,7 +1288,7 @@ void main() {
       return tableRow.decoration! as BoxDecoration;
     }
 
-    await tester.pumpWidget(buildTable(selected: false));
+    await tester.pumpWidget(buildTable());
     expect(lastTableRowBoxDecoration().color, null);
 
     await tester.pumpWidget(buildTable(selected: true));
@@ -1451,7 +1457,7 @@ void main() {
               DataCell(Text('Content1')),
             ],
           ),
-        ]
+        ],
       );
     }
 
@@ -1628,5 +1634,105 @@ void main() {
       tester.getRect(cellContent).left - tester.getRect(padding).left,
       _customHorizontalMargin,
     );
+  });
+
+  testWidgets('DataRow is disabled when onSelectChanged is not set', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Material(
+          child: DataTable(
+            columns: const <DataColumn>[
+              DataColumn(label: Text('Col1')),
+              DataColumn(label: Text('Col2')),
+            ],
+            rows: <DataRow>[
+              DataRow(cells: const <DataCell>[
+                DataCell(Text('Hello')),
+                DataCell(Text('world')),
+              ],
+              onSelectChanged: (bool? value) {},
+              ),
+              const DataRow(cells: <DataCell>[
+                DataCell(Text('Bug')),
+                DataCell(Text('report')),
+              ]),
+              const DataRow(cells: <DataCell>[
+                DataCell(Text('GitHub')),
+                DataCell(Text('issue')),
+              ]),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.widgetWithText(TableRowInkWell, 'Hello'), findsOneWidget);
+    expect(find.widgetWithText(TableRowInkWell, 'Bug'), findsNothing);
+    expect(find.widgetWithText(TableRowInkWell, 'GitHub'), findsNothing);
+  });
+
+  testWidgets('DataTable set interior border test', (WidgetTester tester) async {
+    const List<DataColumn> columns = <DataColumn>[
+      DataColumn(label: Text('column1')),
+      DataColumn(label: Text('column2')),
+    ];
+
+    const List<DataCell> cells = <DataCell>[
+      DataCell(Text('cell1')),
+      DataCell(Text('cell2')),
+    ];
+
+    const List<DataRow> rows = <DataRow>[
+      DataRow(cells: cells),
+      DataRow(cells: cells),
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Material(
+          child: DataTable(
+            border: TableBorder.all(width: 2, color: Colors.red),
+            columns: columns,
+            rows: rows,
+          ),
+        ),
+      ),
+    );
+
+    final Finder finder = find.byType(DataTable);
+    expect(tester.getSize(finder), equals(const Size(800, 600)));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Material(
+          child: DataTable(
+            border: TableBorder.all(color: Colors.red),
+            columns: columns,
+            rows: rows,
+          ),
+        ),
+      ),
+    );
+
+    Table table = tester.widget(find.byType(Table));
+    TableBorder? tableBorder = table.border;
+    expect(tableBorder!.top.color, Colors.red);
+    expect(tableBorder.bottom.width, 1);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Material(
+          child: DataTable(
+            columns: columns,
+            rows: rows,
+          ),
+        ),
+      ),
+    );
+
+    table = tester.widget(find.byType(Table));
+    tableBorder = table.border;
+    expect(tableBorder?.bottom.width, null);
+    expect(tableBorder?.top.color, null);
   });
 }

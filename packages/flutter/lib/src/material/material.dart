@@ -54,11 +54,11 @@ enum MaterialType {
 ///
 ///  * [MaterialType]
 ///  * [Material]
-final Map<MaterialType, BorderRadius?> kMaterialEdges = <MaterialType, BorderRadius?>{
+const Map<MaterialType, BorderRadius?> kMaterialEdges = <MaterialType, BorderRadius?>{
   MaterialType.canvas: null,
-  MaterialType.card: BorderRadius.circular(2.0),
+  MaterialType.card: BorderRadius.all(Radius.circular(2.0)),
   MaterialType.circle: null,
-  MaterialType.button: BorderRadius.circular(2.0),
+  MaterialType.button: BorderRadius.all(Radius.circular(2.0)),
   MaterialType.transparency: null,
 };
 
@@ -91,6 +91,7 @@ abstract class MaterialInkController {
 /// 1. Clipping: If [clipBehavior] is not [Clip.none], Material clips its widget
 ///    sub-tree to the shape specified by [shape], [type], and [borderRadius].
 ///    By default, [clipBehavior] is [Clip.none] for performance considerations.
+///    See [Ink] for an example of how this affects clipping [Ink] widgets.
 /// 2. Elevation: Material elevates its widget sub-tree on the Z axis by
 ///    [elevation] pixels, and draws the appropriate shadow.
 /// 3. Ink effects: Material shows ink effects implemented by [InkFeature]s
@@ -310,12 +311,14 @@ class Material extends StatefulWidget {
   /// ```dart
   /// MaterialInkController inkController = Material.of(context);
   /// ```
+  ///
+  /// This method can be expensive (it walks the element tree).
   static MaterialInkController? of(BuildContext context) {
     return context.findAncestorRenderObjectOfType<_RenderInkFeatures>();
   }
 
   @override
-  _MaterialState createState() => _MaterialState();
+  State<Material> createState() => _MaterialState();
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
@@ -348,7 +351,9 @@ class _MaterialState extends State<Material> with TickerProviderStateMixin {
         case MaterialType.card:
           color = theme.cardColor;
           break;
-        default:
+        case MaterialType.button:
+        case MaterialType.circle:
+        case MaterialType.transparency:
           break;
       }
     }
@@ -383,8 +388,8 @@ class _MaterialState extends State<Material> with TickerProviderStateMixin {
         key: _inkFeatureRenderer,
         absorbHitTest: widget.type != MaterialType.transparency,
         color: backgroundColor,
-        child: contents,
         vsync: this,
+        child: contents,
       ),
     );
 
@@ -403,7 +408,6 @@ class _MaterialState extends State<Material> with TickerProviderStateMixin {
         duration: widget.animationDuration,
         shape: BoxShape.rectangle,
         clipBehavior: widget.clipBehavior,
-        borderRadius: BorderRadius.zero,
         elevation: widget.elevation,
         color: ElevationOverlay.applyOverlay(context, backgroundColor!, widget.elevation),
         shadowColor: widget.shadowColor ?? Theme.of(context).shadowColor,
@@ -443,19 +447,19 @@ class _MaterialState extends State<Material> with TickerProviderStateMixin {
     required Widget contents,
   }) {
     final _ShapeBorderPaint child = _ShapeBorderPaint(
-      child: contents,
       shape: shape,
+      child: contents,
     );
     if (clipBehavior == Clip.none) {
       return child;
     }
     return ClipPath(
-      child: child,
       clipper: ShapeBorderClipper(
         shape: shape,
         textDirection: Directionality.maybeOf(context),
       ),
       clipBehavior: clipBehavior,
+      child: child,
     );
   }
 
@@ -779,11 +783,6 @@ class _MaterialInteriorState extends AnimatedWidgetBaseState<_MaterialInterior> 
     final ShapeBorder shape = _border!.evaluate(animation)!;
     final double elevation = _elevation!.evaluate(animation);
     return PhysicalShape(
-      child: _ShapeBorderPaint(
-        child: widget.child,
-        shape: shape,
-        borderOnForeground: widget.borderOnForeground,
-      ),
       clipper: ShapeBorderClipper(
         shape: shape,
         textDirection: Directionality.maybeOf(context),
@@ -792,6 +791,11 @@ class _MaterialInteriorState extends AnimatedWidgetBaseState<_MaterialInterior> 
       elevation: elevation,
       color: ElevationOverlay.applyOverlay(context, widget.color, elevation),
       shadowColor: _shadowColor!.evaluate(animation)!,
+      child: _ShapeBorderPaint(
+        shape: shape,
+        borderOnForeground: widget.borderOnForeground,
+        child: widget.child,
+      ),
     );
   }
 }
@@ -810,9 +814,9 @@ class _ShapeBorderPaint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      child: child,
       painter: borderOnForeground ? null : _ShapeBorderPainter(shape, Directionality.maybeOf(context)),
       foregroundPainter: borderOnForeground ? _ShapeBorderPainter(shape, Directionality.maybeOf(context)) : null,
+      child: child,
     );
   }
 }

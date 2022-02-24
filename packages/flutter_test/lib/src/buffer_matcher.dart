@@ -4,7 +4,7 @@
 
 import 'dart:typed_data';
 
-import 'package:test_api/src/frontend/async_matcher.dart'; // ignore: implementation_imports
+import 'package:test_api/src/expect/async_matcher.dart'; // ignore: implementation_imports
 // ignore: deprecated_member_use
 import 'package:test_api/test_api.dart' show Description, TestFailure;
 
@@ -29,7 +29,7 @@ class _BufferGoldenMatcher extends AsyncMatcher {
     } else if (item is Future<List<int>>) {
       buffer = Uint8List.fromList(await item);
     } else {
-      throw 'Expected `List<int>` or `Future<List<int>>`, instead found: ${item.runtimeType}';
+      throw AssertionError('Expected `List<int>` or `Future<List<int>>`, instead found: ${item.runtimeType}');
     }
     final Uri testNameUri = goldenFileComparator.getTestUri(key, version);
     if (autoUpdateGoldenFiles) {

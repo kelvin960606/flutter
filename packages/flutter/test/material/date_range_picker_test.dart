@@ -28,7 +28,7 @@ void main() {
   String? saveText;
 
   setUp(() {
-    firstDate = DateTime(2015, DateTime.january, 1);
+    firstDate = DateTime(2015);
     lastDate = DateTime(2016, DateTime.december, 31);
     currentDate = null;
     initialDateRange = DateTimeRange(
@@ -52,9 +52,9 @@ void main() {
 
   Future<void> preparePicker(
     WidgetTester tester,
-    Future<void> Function(Future<DateTimeRange?> date) callback,
-    { TextDirection textDirection = TextDirection.ltr }
-  ) async {
+    Future<void> Function(Future<DateTimeRange?> date) callback, {
+    TextDirection textDirection = TextDirection.ltr,
+  }) async {
     late BuildContext buttonContext;
     await tester.pumpWidget(MaterialApp(
       home: Material(
@@ -116,16 +116,18 @@ void main() {
   testWidgets('Initial date is the default', (WidgetTester tester) async {
     await preparePicker(tester, (Future<DateTimeRange?> range) async {
       await tester.tap(find.text('SAVE'));
-      expect(await range, DateTimeRange(
-        start: DateTime(2016, DateTime.january, 15),
-        end: DateTime(2016, DateTime.january, 25)
-      ));
+      expect(
+        await range,
+        DateTimeRange(
+          start: DateTime(2016, DateTime.january, 15),
+          end: DateTime(2016, DateTime.january, 25),
+        ),
+      );
     });
   });
 
-  testWidgets('Last month header should be visible if last date is selected',
-      (WidgetTester tester) async {
-    firstDate = DateTime(2015, DateTime.january, 1);
+  testWidgets('Last month header should be visible if last date is selected', (WidgetTester tester) async {
+    firstDate = DateTime(2015);
     lastDate = DateTime(2016, DateTime.december, 31);
     initialDateRange = DateTimeRange(
       start: lastDate,
@@ -138,9 +140,8 @@ void main() {
     });
   });
 
-  testWidgets('First month header should be visible if first date is selected',
-      (WidgetTester tester) async {
-    firstDate = DateTime(2015, DateTime.january, 1);
+  testWidgets('First month header should be visible if first date is selected', (WidgetTester tester) async {
+    firstDate = DateTime(2015);
     lastDate = DateTime(2016, DateTime.december, 31);
     initialDateRange = DateTimeRange(
       start: firstDate,
@@ -154,11 +155,10 @@ void main() {
     });
   });
 
-  testWidgets('Current month header should be visible if no date is selected',
-      (WidgetTester tester) async {
-    firstDate = DateTime(2015, DateTime.january, 1);
+  testWidgets('Current month header should be visible if no date is selected', (WidgetTester tester) async {
+    firstDate = DateTime(2015);
     lastDate = DateTime(2016, DateTime.december, 31);
-    currentDate = DateTime(2016, DateTime.september, 1);
+    currentDate = DateTime(2016, DateTime.september);
     initialDateRange = null;
 
     await preparePicker(tester, (Future<DateTimeRange?> range) async {
@@ -352,7 +352,7 @@ void main() {
                    onPressed: () {
                      showDateRangePicker(
                        context: context,
-                       firstDate:DateTime(2001, DateTime.january, 1),
+                       firstDate:DateTime(2001),
                        lastDate: DateTime(2031, DateTime.december, 31),
                        builder: (BuildContext context, Widget? child) {
                          return Directionality(
@@ -612,14 +612,13 @@ void main() {
           start: DateTime(2016, DateTime.january, 19),
           end: DateTime(2016, DateTime.january, 21),
         ));
-      },
-      textDirection: TextDirection.rtl);
+      }, textDirection: TextDirection.rtl);
     });
   });
 
   group('Input mode', () {
     setUp(() {
-      firstDate = DateTime(2015, DateTime.january, 1);
+      firstDate = DateTime(2015);
       lastDate = DateTime(2017, DateTime.december, 31);
       initialDateRange = DateTimeRange(
         start: DateTime(2017, DateTime.january, 15),
@@ -797,9 +796,13 @@ void main() {
       // fill color and test them against the expected values.
       void _testInputDecorator(CustomPaint decoratorPaint, InputBorder expectedBorder, Color expectedContainerColor) {
         final dynamic/*_InputBorderPainter*/ inputBorderPainter = decoratorPaint.foregroundPainter;
+        // ignore: avoid_dynamic_calls
         final dynamic/*_InputBorderTween*/ inputBorderTween = inputBorderPainter.border;
+        // ignore: avoid_dynamic_calls
         final Animation<double> animation = inputBorderPainter.borderAnimation as Animation<double>;
+        // ignore: avoid_dynamic_calls
         final InputBorder actualBorder = inputBorderTween.evaluate(animation) as InputBorder;
+        // ignore: avoid_dynamic_calls
         final Color containerColor = inputBorderPainter.blendedColor as Color;
 
         expect(actualBorder, equals(expectedBorder));
@@ -811,7 +814,6 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         theme: ThemeData.light().copyWith(
           inputDecorationTheme: const InputDecorationTheme(
-            filled: false,
             border: border,
           ),
         ),
@@ -975,7 +977,7 @@ class _RestorableDateRangePickerDialogTestWidgetState extends State<_RestorableD
   @override
   String? get restorationId => 'scaffold_state';
 
-  final RestorableDateTimeN _startDate = RestorableDateTimeN(DateTime(2021, 1, 1));
+  final RestorableDateTimeN _startDate = RestorableDateTimeN(DateTime(2021));
   final RestorableDateTimeN _endDate = RestorableDateTimeN(DateTime(2021, 1, 5));
   late final RestorableRouteFuture<DateTimeRange?> _restorableDateRangePickerRouteFuture = RestorableRouteFuture<DateTimeRange?>(
     onComplete: _selectDateRange,
@@ -984,7 +986,7 @@ class _RestorableDateRangePickerDialogTestWidgetState extends State<_RestorableD
         _dateRangePickerRoute,
         arguments: <String, dynamic>{
           'datePickerEntryMode': widget.datePickerEntryMode.index,
-        }
+        },
       );
     },
   );
@@ -1016,9 +1018,9 @@ class _RestorableDateRangePickerDialogTestWidgetState extends State<_RestorableD
         return DateRangePickerDialog(
           restorationId: 'date_picker_dialog',
           initialEntryMode: DatePickerEntryMode.values[args['datePickerEntryMode'] as int],
-          firstDate: DateTime(2021, 1, 1),
+          firstDate: DateTime(2021),
           currentDate: DateTime(2021, 1, 25),
-          lastDate: DateTime(2022, 1, 1),
+          lastDate: DateTime(2022),
         );
       },
     );

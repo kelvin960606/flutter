@@ -5,8 +5,8 @@
 import 'dart:convert';
 import 'dart:io' show ProcessResult, systemEncoding;
 
-import 'package:process/process.dart';
 import 'package:fuchsia_remote_debug_protocol/src/runners/ssh_command_runner.dart';
+import 'package:process/process.dart';
 import 'package:test/fake.dart';
 
 import '../../common.dart';
@@ -136,8 +136,8 @@ class FakeProcessManager extends Fake implements ProcessManager {
     Map<String, String>? environment,
     bool includeParentEnvironment = true,
     bool runInShell = false,
-    Encoding stdoutEncoding = systemEncoding,
-    Encoding stderrEncoding = systemEncoding,
+    Encoding? stdoutEncoding = systemEncoding,
+    Encoding? stderrEncoding = systemEncoding,
   }) async {
     runCommands.add(command);
     return fakeResult!;

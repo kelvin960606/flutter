@@ -11,7 +11,16 @@ import 'package:vector_math/vector_math_64.dart' show Quad, Vector3, Matrix4;
 import 'basic.dart';
 import 'framework.dart';
 import 'gesture_detector.dart';
+import 'layout_builder.dart';
 import 'ticker_provider.dart';
+
+/// A signature for widget builders that take a [Quad] of the current viewport.
+///
+/// See also:
+///
+///   * [InteractiveViewer.builder], whose builder is of this type.
+///   * [WidgetBuilder], which is similar, but takes no viewport.
+typedef InteractiveViewerWidgetBuilder = Widget Function(BuildContext context, Quad viewport);
 
 /// A widget that enables pan and zoom interactions with its child.
 ///
@@ -38,30 +47,10 @@ import 'ticker_provider.dart';
 ///   * The [Flutter Gallery's transformations demo](https://github.com/flutter/gallery/blob/master/lib/demos/reference/transformations_demo.dart),
 ///     which includes the use of InteractiveViewer.
 ///
-/// {@tool dartpad --template=stateless_widget_scaffold}
+/// {@tool dartpad}
 /// This example shows a simple Container that can be panned and zoomed.
 ///
-/// ```dart
-/// Widget build(BuildContext context) {
-///   return Center(
-///     child: InteractiveViewer(
-///       boundaryMargin: const EdgeInsets.all(20.0),
-///       minScale: 0.1,
-///       maxScale: 1.6,
-///       child: Container(
-///         decoration: const BoxDecoration(
-///           gradient: LinearGradient(
-///             begin: Alignment.topCenter,
-///             end: Alignment.bottomCenter,
-///             colors: <Color>[Colors.orange, Colors.red],
-///             stops: <double>[0.0, 1.0],
-///           ),
-///         ),
-///       ),
-///     ),
-///   );
-/// }
-/// ```
+/// ** See code in examples/api/lib/widgets/interactive_viewer/interactive_viewer.0.dart **
 /// {@end-tool}
 @immutable
 class InteractiveViewer extends StatefulWidget {
@@ -84,7 +73,7 @@ class InteractiveViewer extends StatefulWidget {
     this.panEnabled = true,
     this.scaleEnabled = true,
     this.transformationController,
-    required this.child,
+    required Widget this.child,
   }) : assert(alignPanAxis != null),
        assert(child != null),
        assert(constrained != null),
@@ -105,6 +94,54 @@ class InteractiveViewer extends StatefulWidget {
            && boundaryMargin.right.isFinite && boundaryMargin.bottom.isFinite
            && boundaryMargin.left.isFinite),
        ),
+       builder = null,
+       super(key: key);
+
+  /// Creates an InteractiveViewer for a child that is created on demand.
+  ///
+  /// Can be used to render a child that changes in response to the current
+  /// transformation.
+  ///
+  /// The [builder] parameter must not be null. See its docs for an example of
+  /// using it to optimize a large child.
+  InteractiveViewer.builder({
+    Key? key,
+    this.clipBehavior = Clip.hardEdge,
+    this.alignPanAxis = false,
+    this.boundaryMargin = EdgeInsets.zero,
+    // These default scale values were eyeballed as reasonable limits for common
+    // use cases.
+    this.maxScale = 2.5,
+    this.minScale = 0.8,
+    this.onInteractionEnd,
+    this.onInteractionStart,
+    this.onInteractionUpdate,
+    this.panEnabled = true,
+    this.scaleEnabled = true,
+    this.transformationController,
+    required InteractiveViewerWidgetBuilder this.builder,
+  }) : assert(alignPanAxis != null),
+       assert(builder != null),
+       assert(minScale != null),
+       assert(minScale > 0),
+       assert(minScale.isFinite),
+       assert(maxScale != null),
+       assert(maxScale > 0),
+       assert(!maxScale.isNaN),
+       assert(maxScale >= minScale),
+       assert(panEnabled != null),
+       assert(scaleEnabled != null),
+       // boundaryMargin must be either fully infinite or fully finite, but not
+       // a mix of both.
+       assert(
+         (boundaryMargin.horizontal.isInfinite && boundaryMargin.vertical.isInfinite) ||
+             (boundaryMargin.top.isFinite &&
+                 boundaryMargin.right.isFinite &&
+                 boundaryMargin.bottom.isFinite &&
+                 boundaryMargin.left.isFinite),
+       ),
+       constrained = false,
+       child = null,
        super(key: key);
 
   /// If set to [Clip.none], the child may extend beyond the size of the InteractiveViewer,
@@ -143,10 +180,29 @@ class InteractiveViewer extends StatefulWidget {
   /// exact same size and position as the [child].
   final EdgeInsets boundaryMargin;
 
-  /// The Widget to perform the transformations on.
+  /// Builds the child of this widget.
   ///
-  /// Cannot be null.
-  final Widget child;
+  /// Passed with the [InteractiveViewer.builder] constructor. Otherwise, the
+  /// [child] parameter must be passed directly, and this is null.
+  ///
+  /// {@tool dartpad}
+  /// This example shows how to use builder to create a [Table] whose cell
+  /// contents are only built when they are visible. Built and remove cells are
+  /// logged in the console for illustration.
+  ///
+  /// ** See code in examples/api/lib/widgets/interactive_viewer/interactive_viewer.builder.0.dart **
+  /// {@end-tool}
+  ///
+  /// See also:
+  ///
+  ///   * [ListView.builder], which follows a similar pattern.
+  final InteractiveViewerWidgetBuilder? builder;
+
+  /// The child [Widget] that is transformed by InteractiveViewer.
+  ///
+  /// If the [InteractiveViewer.builder] constructor is used, then this will be
+  /// null, otherwise it is required.
+  final Widget? child;
 
   /// Whether the normal size constraints at this point in the widget tree are
   /// applied to the child.
@@ -165,48 +221,13 @@ class InteractiveViewer extends StatefulWidget {
   ///
   /// Defaults to true.
   ///
-  /// {@tool dartpad --template=stateless_widget_scaffold}
+  /// {@tool dartpad}
   /// This example shows how to create a pannable table. Because the table is
   /// larger than the entire screen, setting `constrained` to false is necessary
   /// to allow it to be drawn to its full size. The parts of the table that
   /// exceed the screen size can then be panned into view.
   ///
-  /// ```dart
-  ///   Widget build(BuildContext context) {
-  ///     const int _rowCount = 48;
-  ///     const int _columnCount = 6;
-  ///
-  ///     return InteractiveViewer(
-  ///       alignPanAxis: true,
-  ///       constrained: false,
-  ///       scaleEnabled: false,
-  ///       child: Table(
-  ///         columnWidths: <int, TableColumnWidth>{
-  ///           for (int column = 0; column < _columnCount; column += 1)
-  ///             column: const FixedColumnWidth(200.0),
-  ///         },
-  ///         children: <TableRow>[
-  ///           for (int row = 0; row < _rowCount; row += 1)
-  ///             TableRow(
-  ///               children: <Widget>[
-  ///                 for (int column = 0; column < _columnCount; column += 1)
-  ///                   Container(
-  ///                     height: 26,
-  ///                     color: row % 2 + column % 2 == 1
-  ///                         ? Colors.white
-  ///                         : Colors.grey.withOpacity(0.1),
-  ///                     child: Align(
-  ///                       alignment: Alignment.centerLeft,
-  ///                       child: Text('$row x $column'),
-  ///                     ),
-  ///                   ),
-  ///               ],
-  ///             ),
-  ///         ],
-  ///       ),
-  ///     );
-  ///   }
-  /// ```
+  /// ** See code in examples/api/lib/widgets/interactive_viewer/interactive_viewer.constrained.0.dart **
   /// {@end-tool}
   final bool constrained;
 
@@ -298,7 +319,7 @@ class InteractiveViewer extends StatefulWidget {
   ///
   /// At the time this is called, the [TransformationController] will have
   /// already been updated to reflect the change caused by the interaction, if
-  /// the interation caused the matrix to change.
+  /// the interaction caused the matrix to change.
   ///
   /// {@macro flutter.widgets.InteractiveViewer.onInteractionEnd}
   ///
@@ -321,103 +342,11 @@ class InteractiveViewer extends StatefulWidget {
   /// listeners are notified. If the value is set, InteractiveViewer will update
   /// to respect the new value.
   ///
-  /// {@tool dartpad --template=stateful_widget_material_ticker}
+  /// {@tool dartpad}
   /// This example shows how transformationController can be used to animate the
   /// transformation back to its starting position.
   ///
-  /// ```dart
-  /// final TransformationController _transformationController = TransformationController();
-  /// Animation<Matrix4>? _animationReset;
-  /// late final AnimationController _controllerReset;
-  ///
-  /// void _onAnimateReset() {
-  ///   _transformationController.value = _animationReset!.value;
-  ///   if (!_controllerReset.isAnimating) {
-  ///     _animationReset!.removeListener(_onAnimateReset);
-  ///     _animationReset = null;
-  ///     _controllerReset.reset();
-  ///   }
-  /// }
-  ///
-  /// void _animateResetInitialize() {
-  ///   _controllerReset.reset();
-  ///   _animationReset = Matrix4Tween(
-  ///     begin: _transformationController.value,
-  ///     end: Matrix4.identity(),
-  ///   ).animate(_controllerReset);
-  ///   _animationReset!.addListener(_onAnimateReset);
-  ///   _controllerReset.forward();
-  /// }
-  ///
-  /// // Stop a running reset to home transform animation.
-  /// void _animateResetStop() {
-  ///   _controllerReset.stop();
-  ///   _animationReset?.removeListener(_onAnimateReset);
-  ///   _animationReset = null;
-  ///   _controllerReset.reset();
-  /// }
-  ///
-  /// void _onInteractionStart(ScaleStartDetails details) {
-  ///   // If the user tries to cause a transformation while the reset animation is
-  ///   // running, cancel the reset animation.
-  ///   if (_controllerReset.status == AnimationStatus.forward) {
-  ///     _animateResetStop();
-  ///   }
-  /// }
-  ///
-  /// @override
-  /// void initState() {
-  ///   super.initState();
-  ///   _controllerReset = AnimationController(
-  ///     vsync: this,
-  ///     duration: const Duration(milliseconds: 400),
-  ///   );
-  /// }
-  ///
-  /// @override
-  /// void dispose() {
-  ///   _controllerReset.dispose();
-  ///   super.dispose();
-  /// }
-  ///
-  /// @override
-  /// Widget build(BuildContext context) {
-  ///   return Scaffold(
-  ///     backgroundColor: Theme.of(context).colorScheme.primary,
-  ///     appBar: AppBar(
-  ///       automaticallyImplyLeading: false,
-  ///       title: const Text('Controller demo'),
-  ///     ),
-  ///     body: Center(
-  ///       child: InteractiveViewer(
-  ///         boundaryMargin: const EdgeInsets.all(double.infinity),
-  ///         transformationController: _transformationController,
-  ///         minScale: 0.1,
-  ///         maxScale: 1.0,
-  ///         onInteractionStart: _onInteractionStart,
-  ///         child: Container(
-  ///           decoration: const BoxDecoration(
-  ///             gradient: LinearGradient(
-  ///               begin: Alignment.topCenter,
-  ///               end: Alignment.bottomCenter,
-  ///               colors: <Color>[Colors.orange, Colors.red],
-  ///               stops: <double>[0.0, 1.0],
-  ///             ),
-  ///           ),
-  ///         ),
-  ///       ),
-  ///     ),
-  ///     persistentFooterButtons: <Widget>[
-  ///       IconButton(
-  ///         onPressed: _animateResetInitialize,
-  ///         tooltip: 'Reset',
-  ///         color: Theme.of(context).colorScheme.surface,
-  ///         icon: const Icon(Icons.replay),
-  ///       ),
-  ///     ],
-  ///   );
-  /// }
-  /// ```
+  /// ** See code in examples/api/lib/widgets/interactive_viewer/interactive_viewer.transformation_controller.0.dart **
   /// {@end-tool}
   ///
   /// See also:
@@ -441,7 +370,7 @@ class InteractiveViewer extends StatefulWidget {
     // the point.
     final Vector3 l1P = point - l1;
     final Vector3 l1L2 = l2 - l1;
-    final double fraction = (l1P.dot(l1L2) / lengthSquared).clamp(0.0, 1.0).toDouble();
+    final double fraction = (l1P.dot(l1L2) / lengthSquared).clamp(0.0, 1.0);
     return l1 + l1L2 * fraction;
   }
 
@@ -544,7 +473,8 @@ class InteractiveViewer extends StatefulWidget {
     return closestOverall;
   }
 
-  @override _InteractiveViewerState createState() => _InteractiveViewerState();
+  @override
+  State<InteractiveViewer> createState() => _InteractiveViewerState();
 }
 
 class _InteractiveViewerState extends State<InteractiveViewer> with TickerProviderStateMixin {
@@ -582,6 +512,10 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
     final RenderBox childRenderBox = _childKey.currentContext!.findRenderObject()! as RenderBox;
     final Size childSize = childRenderBox.size;
     final Rect boundaryRect = widget.boundaryMargin.inflateRect(Offset.zero & childSize);
+    assert(
+      !boundaryRect.isEmpty,
+      "InteractiveViewer's child must have nonzero dimensions.",
+    );
     // Boundaries that are partially infinite are not allowed because Matrix4's
     // rotation and translation methods don't handle infinites well.
     assert(
@@ -958,10 +892,7 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
         widget.onInteractionUpdate?.call(ScaleUpdateDetails(
           focalPoint: event.position,
           localFocalPoint: event.localPosition,
-          rotation: 0.0,
           scale: scaleChange,
-          horizontalScale: 1.0,
-          verticalScale: 1.0,
         ));
         widget.onInteractionEnd?.call(ScaleEndDetails());
         return;
@@ -989,10 +920,7 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
       widget.onInteractionUpdate?.call(ScaleUpdateDetails(
         focalPoint: event.position,
         localFocalPoint: event.localPosition,
-        rotation: 0.0,
         scale: scaleChange,
-        horizontalScale: 1.0,
-        verticalScale: 1.0,
       ));
       widget.onInteractionEnd?.call(ScaleEndDetails());
     }
@@ -1078,15 +1006,80 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
 
   @override
   Widget build(BuildContext context) {
+    Widget child;
+    if (widget.child != null) {
+      child = _InteractiveViewerBuilt(
+        childKey: _childKey,
+        clipBehavior: widget.clipBehavior,
+        constrained: widget.constrained,
+        matrix: _transformationController!.value,
+        child: widget.child!,
+      );
+    } else {
+      // When using InteractiveViewer.builder, then constrained is false and the
+      // viewport is the size of the constraints.
+      assert(widget.builder != null);
+      assert(!widget.constrained);
+      child = LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final Matrix4 matrix = _transformationController!.value;
+          return _InteractiveViewerBuilt(
+            childKey: _childKey,
+            clipBehavior: widget.clipBehavior,
+            constrained: widget.constrained,
+            matrix: matrix,
+            child: widget.builder!(
+              context,
+              _transformViewport(matrix, Offset.zero & constraints.biggest),
+            ),
+          );
+        },
+      );
+    }
+
+    return Listener(
+      key: _parentKey,
+      onPointerSignal: _receivedPointerSignal,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque, // Necessary when panning off screen.
+        onScaleEnd: _onScaleEnd,
+        onScaleStart: _onScaleStart,
+        onScaleUpdate: _onScaleUpdate,
+        child: child,
+      ),
+    );
+  }
+}
+
+// This widget simply allows us to easily swap in and out the LayoutBuilder in
+// InteractiveViewer's depending on if it's using a builder or a child.
+class _InteractiveViewerBuilt extends StatelessWidget {
+  const _InteractiveViewerBuilt({
+    Key? key,
+    required this.child,
+    required this.childKey,
+    required this.clipBehavior,
+    required this.constrained,
+    required this.matrix,
+  }) : super(key: key);
+
+  final Widget child;
+  final GlobalKey childKey;
+  final Clip clipBehavior;
+  final bool constrained;
+  final Matrix4 matrix;
+
+  @override
+  Widget build(BuildContext context) {
     Widget child = Transform(
-      transform: _transformationController!.value,
+      transform: matrix,
       child: KeyedSubtree(
-        key: _childKey,
-        child: widget.child,
+        key: childKey,
+        child: this.child,
       ),
     );
 
-    if (!widget.constrained) {
+    if (!constrained) {
       child = OverflowBox(
         alignment: Alignment.topLeft,
         minWidth: 0.0,
@@ -1097,27 +1090,14 @@ class _InteractiveViewerState extends State<InteractiveViewer> with TickerProvid
       );
     }
 
-    if (widget.clipBehavior != Clip.none) {
+    if (clipBehavior != Clip.none) {
       child = ClipRect(
-        clipBehavior: widget.clipBehavior,
+        clipBehavior: clipBehavior,
         child: child,
       );
     }
 
-    // A GestureDetector allows the detection of panning and zooming gestures on
-    // the child.
-    return Listener(
-      key: _parentKey,
-      onPointerSignal: _receivedPointerSignal,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque, // Necessary when panning off screen.
-        dragStartBehavior: DragStartBehavior.start,
-        onScaleEnd: _onScaleEnd,
-        onScaleStart: _onScaleStart,
-        onScaleUpdate: _onScaleUpdate,
-        child: child,
-      ),
-    );
+    return child;
   }
 }
 

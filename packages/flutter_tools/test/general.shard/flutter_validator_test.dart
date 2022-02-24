@@ -12,10 +12,10 @@ import 'package:flutter_tools/src/base/user_messages.dart';
 import 'package:flutter_tools/src/doctor.dart';
 import 'package:flutter_tools/src/doctor_validator.dart';
 import 'package:flutter_tools/src/version.dart';
-import 'package:mockito/mockito.dart';
+import 'package:test/fake.dart';
 
 import '../src/common.dart';
-import '../src/context.dart';
+import '../src/fake_process_manager.dart';
 import '../src/fakes.dart';
 
 /// Matches a doctor validation result.
@@ -40,11 +40,11 @@ void main() {
     final Artifacts artifacts = Artifacts.test();
     final FlutterValidator flutterValidator = FlutterValidator(
       platform: FakePlatform(
-        operatingSystem: 'linux',
         localeName: 'en_US.UTF-8',
         environment: <String, String>{},
       ),
       flutterVersion: () => flutterVersion,
+        devToolsVersion: () => '2.8.0',
       userMessages: UserMessages(),
       artifacts: artifacts,
       fileSystem: fileSystem,
@@ -86,11 +86,12 @@ void main() {
         environment: <String, String>{},
       ),
       flutterVersion: () => flutterVersion,
+      devToolsVersion: () => '2.8.0',
       userMessages: UserMessages(),
       artifacts: Artifacts.test(),
       fileSystem: MemoryFileSystem.test(),
       operatingSystemUtils: FakeOperatingSystemUtils(name: 'Windows'),
-      processManager: FakeProcessManager.list(<FakeCommand>[]),
+      processManager: FakeProcessManager.empty(),
       flutterRoot: () => 'sdk/flutter',
     );
 
@@ -107,22 +108,23 @@ void main() {
     final FlutterValidator flutterValidator = FlutterValidator(
       platform: FakePlatform(operatingSystem: 'windows', localeName: 'en_US.UTF-8'),
       flutterVersion: () => FakeThrowingFlutterVersion(),
+      devToolsVersion: () => '2.8.0',
       userMessages: UserMessages(),
       artifacts: Artifacts.test(),
       fileSystem: MemoryFileSystem.test(),
       operatingSystemUtils: FakeOperatingSystemUtils(name: 'Windows'),
-      processManager: FakeProcessManager.list(<FakeCommand>[]),
+      processManager: FakeProcessManager.empty(),
       flutterRoot: () => 'sdk/flutter',
     );
 
     expect(await flutterValidator.validate(), _matchDoctorValidation(
       validationType: ValidationType.partial,
       statusInfo: 'Channel unknown, 0.0.0, on Windows, locale en_US.UTF-8',
-      messages: const <ValidationMessage>[
+      messages: containsAll(const <ValidationMessage>[
         ValidationMessage('Flutter version 0.0.0 at sdk/flutter'),
         ValidationMessage.error('version error'),
       ]),
-    );
+    ));
   });
 
   testWithoutContext('FlutterValidator shows mirrors on pub and flutter cloud storage', () async {
@@ -142,6 +144,7 @@ void main() {
     final FlutterValidator flutterValidator = FlutterValidator(
       platform: platform,
       flutterVersion: () => flutterVersion,
+        devToolsVersion: () => '2.8.0',
       userMessages: UserMessages(),
       artifacts: artifacts,
       fileSystem: fileSystem,
@@ -159,6 +162,76 @@ void main() {
       ])
     ));
   });
+
+  testWithoutContext('FlutterValidator shows FLUTTER_GIT_URL environment variable when set', () async {
+    final FlutterValidator flutterValidator = FlutterValidator(
+      platform: FakePlatform(
+        localeName: 'en_US.UTF-8',
+        environment: <String, String> {
+          'FLUTTER_GIT_URL': 'https://githubmirror.com/flutter.git',
+        },
+      ),
+      flutterVersion: () => FakeFlutterVersion(frameworkVersion: '1.0.0'),
+      devToolsVersion: () => '2.8.0',
+      userMessages: UserMessages(),
+      artifacts: Artifacts.test(),
+      fileSystem: MemoryFileSystem.test(),
+      processManager: FakeProcessManager.any(),
+      operatingSystemUtils: FakeOperatingSystemUtils(name: 'Linux'),
+      flutterRoot: () => 'sdk/flutter',
+    );
+
+    expect(await flutterValidator.validate(), _matchDoctorValidation(
+      validationType: ValidationType.installed,
+      statusInfo: 'Channel unknown, 1.0.0, on Linux, locale en_US.UTF-8',
+      messages: contains(const ValidationMessage('FLUTTER_GIT_URL = https://githubmirror.com/flutter.git')),
+    ));
+  });
+
+  group('FlutterValidator shows flutter upstream remote', () {
+    testWithoutContext('default url', () async {
+      final FlutterValidator flutterValidator = FlutterValidator(
+        platform: FakePlatform(localeName: 'en_US.UTF-8'),
+        flutterVersion: () => FakeFlutterVersion(frameworkVersion: '1.0.0'),
+        devToolsVersion: () => '2.8.0',
+        userMessages: UserMessages(),
+        artifacts: Artifacts.test(),
+        fileSystem: MemoryFileSystem.test(),
+        processManager: FakeProcessManager.any(),
+        operatingSystemUtils: FakeOperatingSystemUtils(name: 'Linux'),
+        flutterRoot: () => 'sdk/flutter',
+      );
+
+      expect(await flutterValidator.validate(), _matchDoctorValidation(
+        validationType: ValidationType.installed,
+        statusInfo: 'Channel unknown, 1.0.0, on Linux, locale en_US.UTF-8',
+        messages: contains(const ValidationMessage('Upstream repository https://github.com/flutter/flutter.git')),
+      ));
+    });
+
+    testWithoutContext('unknown url if upstream is null', () async {
+      final FlutterValidator flutterValidator = FlutterValidator(
+        platform: FakePlatform(localeName: 'en_US.UTF-8'),
+        flutterVersion: () => FakeFlutterVersion(
+          frameworkVersion: '1.0.0',
+          repositoryUrl: null,
+        ),
+        devToolsVersion: () => '2.8.0',
+        userMessages: UserMessages(),
+        artifacts: Artifacts.test(),
+        fileSystem: MemoryFileSystem.test(),
+        processManager: FakeProcessManager.any(),
+        operatingSystemUtils: FakeOperatingSystemUtils(name: 'Linux'),
+        flutterRoot: () => 'sdk/flutter',
+      );
+
+      expect(await flutterValidator.validate(), _matchDoctorValidation(
+        validationType: ValidationType.installed,
+        statusInfo: 'Channel unknown, 1.0.0, on Linux, locale en_US.UTF-8',
+        messages: contains(const ValidationMessage('Upstream repository unknown')),
+      ));
+    });
+  });
 }
 
 class FakeOperatingSystemUtils extends Fake implements OperatingSystemUtils {
@@ -170,7 +243,7 @@ class FakeOperatingSystemUtils extends Fake implements OperatingSystemUtils {
 
 class FakeThrowingFlutterVersion extends FakeFlutterVersion {
   @override
-   String get frameworkCommitDate {
-     throw VersionCheckError('version error');
-   }
+  String get frameworkCommitDate {
+    throw VersionCheckError('version error');
+  }
 }

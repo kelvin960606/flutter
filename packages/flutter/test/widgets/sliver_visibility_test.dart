@@ -46,9 +46,9 @@ void main() {
           textDirection: TextDirection.ltr,
           child: MediaQuery(
             data: const MediaQueryData(),
-            child: CustomScrollView(slivers: <Widget>[sliver])
-          )
-        )
+            child: CustomScrollView(slivers: <Widget>[sliver]),
+          ),
+        ),
       );
     }
 
@@ -67,7 +67,7 @@ void main() {
             );
           },
         ),
-      )
+      ),
     );
 
     // We now run a sequence of pumpWidget calls one after the other. In
@@ -129,7 +129,6 @@ void main() {
     await tester.pumpWidget(_boilerPlate(SliverVisibility(
       sliver: testChild,
       replacementSliver: const SliverToBoxAdapter(child: Placeholder()),
-      visible: true,
     )));
     expect(find.byType(Text, skipOffstage: false), findsOneWidget);
     expect(find.text('a true', skipOffstage: false), findsOneWidget);
@@ -148,7 +147,6 @@ void main() {
     // visible: true, maintain all
     await tester.pumpWidget(_boilerPlate(SliverVisibility(
       sliver: testChild,
-      visible: true,
       maintainState: true,
       maintainAnimation: true,
       maintainSize: true,
@@ -293,7 +291,7 @@ void main() {
       maintainAnimation: true,
     )));
     expect(find.byType(Text, skipOffstage: false), findsOneWidget);
-    expect(find.byType(Text, skipOffstage: true), findsNothing);
+    expect(find.byType(Text), findsNothing);
     expect(find.text('a true', skipOffstage: false), findsOneWidget);
     expect(find.byType(SliverVisibility, skipOffstage: false), findsOneWidget);
     expect(find.byType(SliverVisibility, skipOffstage: false), paintsNothing);
@@ -313,7 +311,7 @@ void main() {
       maintainState: true,
     )));
     expect(find.byType(Text, skipOffstage: false), findsOneWidget);
-    expect(find.byType(Text, skipOffstage: true), findsNothing);
+    expect(find.byType(Text), findsNothing);
     expect(find.text('a false', skipOffstage: false), findsOneWidget);
     expect(find.byType(SliverVisibility, skipOffstage: false), findsOneWidget);
     expect(find.byType(SliverVisibility, skipOffstage: false), paintsNothing);
@@ -332,7 +330,6 @@ void main() {
     // visible: true, maintain state
     await tester.pumpWidget(_boilerPlate(SliverVisibility(
       sliver: testChild,
-      visible: true,
       maintainState: true,
     )));
     expect(find.byType(Text), findsOneWidget);
@@ -356,7 +353,7 @@ void main() {
       maintainState: true,
     )));
     expect(find.byType(Text, skipOffstage: false), findsOneWidget);
-    expect(find.byType(Text, skipOffstage: true), findsNothing);
+    expect(find.byType(Text), findsNothing);
     expect(find.text('a false', skipOffstage: false), findsOneWidget);
     expect(find.byType(SliverVisibility, skipOffstage: false), findsOneWidget);
     expect(find.byType(SliverVisibility, skipOffstage: false), paintsNothing);
@@ -372,14 +369,12 @@ void main() {
     // visible: true, maintain state.
     await tester.pumpWidget(_boilerPlate(SliverVisibility(
       sliver: testChild,
-      visible: true,
       maintainState: true,
     )));
     expect(find.byType(Text), findsOneWidget);
     expect(find.text('a true', skipOffstage: false), findsOneWidget);
     expect(find.byType(SliverVisibility, skipOffstage: false), findsOneWidget);
-    expect(
-      find.byType(SliverVisibility, skipOffstage: false), paints..paragraph());
+    expect(find.byType(SliverVisibility, skipOffstage: false), paints..paragraph());
     renderViewport = tester.renderObject(find.byType(Viewport));
     renderSliver = renderViewport.lastChild!;
     expect(renderSliver.geometry!.scrollExtent, 14.0);
@@ -397,7 +392,7 @@ void main() {
       maintainState: true,
     )));
     expect(find.byType(Text, skipOffstage: false), findsOneWidget);
-    expect(find.byType(Text, skipOffstage: true), findsNothing);
+    expect(find.byType(Text), findsNothing);
     expect(find.text('a false', skipOffstage: false), findsOneWidget);
     expect(find.byType(SliverVisibility, skipOffstage: false), findsOneWidget);
     expect(find.byType(SliverVisibility, skipOffstage: false), paintsNothing);
@@ -432,7 +427,6 @@ void main() {
     // visible: true.
     await tester.pumpWidget(_boilerPlate(SliverVisibility(
       sliver: testChild,
-      visible: true,
     )));
     expect(find.byType(Text), findsOneWidget);
     expect(find.text('a true', skipOffstage: false), findsOneWidget);
@@ -468,7 +462,6 @@ void main() {
     // visible: true.
     await tester.pumpWidget(_boilerPlate(SliverVisibility(
       sliver: testChild,
-      visible: true,
     )));
     expect(find.byType(Text), findsOneWidget);
     expect(find.text('a true', skipOffstage: false), findsOneWidget);

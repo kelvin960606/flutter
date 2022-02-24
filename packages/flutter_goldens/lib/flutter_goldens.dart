@@ -4,16 +4,15 @@
 
 import 'dart:async' show FutureOr;
 import 'dart:io' as io show OSError, SocketException;
-import 'dart:math' as math show Random;
 import 'dart:typed_data' show Uint8List;
 
 import 'package:file/file.dart';
 import 'package:file/local.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_goldens_client/skia_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform/platform.dart';
 
-import 'package:flutter_goldens_client/skia_client.dart';
 export 'package:flutter_goldens_client/skia_client.dart';
 
 // If you are here trying to figure out how to use golden files in the Flutter
@@ -131,17 +130,14 @@ abstract class FlutterGoldenFileComparator extends GoldenFileComparator {
   static Directory getBaseDirectory(
     LocalFileComparator defaultComparator,
     Platform platform, {
-    String suffix = '',
-    bool local = false,
+    String? suffix,
   }) {
     const FileSystem fs = LocalFileSystem();
     final Directory flutterRoot = fs.directory(platform.environment[_kFlutterRootKey]);
     Directory comparisonRoot;
 
-    if (!local) {
-      comparisonRoot = fs.systemTempDirectory.childDirectory(
-        'skia_goldens_$suffix'
-      );
+    if (suffix != null) {
+      comparisonRoot = fs.systemTempDirectory.createTempSync(suffix);
     } else {
       comparisonRoot = flutterRoot.childDirectory(
         fs.path.join(
@@ -172,7 +168,7 @@ abstract class FlutterGoldenFileComparator extends GoldenFileComparator {
   /// test.
   Uri _addPrefix(Uri golden) {
     final String prefix = basedir.pathSegments[basedir.pathSegments.length - 2];
-    return Uri.parse(prefix + '.' + golden.toString());
+    return Uri.parse('$prefix.$golden');
   }
 }
 
@@ -225,18 +221,18 @@ class FlutterPostSubmitFileComparator extends FlutterGoldenFileComparator {
     final Directory baseDirectory = FlutterGoldenFileComparator.getBaseDirectory(
       defaultComparator,
       platform,
-      suffix: '${math.Random().nextInt(10000)}',
+      suffix: 'flutter_goldens_postsubmit.',
     );
     baseDirectory.createSync(recursive: true);
 
     goldens ??= SkiaGoldClient(baseDirectory);
     await goldens.auth();
-    await goldens.imgtestInit();
     return FlutterPostSubmitFileComparator(baseDirectory.uri, goldens);
   }
 
   @override
   Future<bool> compare(Uint8List imageBytes, Uri golden) async {
+    await skiaClient.imgtestInit();
     golden = _addPrefix(golden);
     await update(golden, imageBytes);
     final File goldenFile = getGoldenFile(golden);
@@ -304,7 +300,7 @@ class FlutterPreSubmitFileComparator extends FlutterGoldenFileComparator {
     final Directory baseDirectory = testBasedir ?? FlutterGoldenFileComparator.getBaseDirectory(
       defaultComparator,
       platform,
-      suffix: '${math.Random().nextInt(10000)}',
+      suffix: 'flutter_goldens_presubmit.',
     );
 
     if (!baseDirectory.existsSync())
@@ -313,16 +309,15 @@ class FlutterPreSubmitFileComparator extends FlutterGoldenFileComparator {
     goldens ??= SkiaGoldClient(baseDirectory);
 
     await goldens.auth();
-    await goldens.tryjobInit();
-      return FlutterPreSubmitFileComparator(
-        baseDirectory.uri,
-        goldens,
-        platform: platform,
-      );
-    }
+    return FlutterPreSubmitFileComparator(
+      baseDirectory.uri,
+      goldens, platform: platform,
+    );
+  }
 
   @override
   Future<bool> compare(Uint8List imageBytes, Uri golden) async {
+    await skiaClient.tryjobInit();
     golden = _addPrefix(golden);
     await update(golden, imageBytes);
     final File goldenFile = getGoldenFile(golden);
@@ -389,9 +384,11 @@ class FlutterSkippingFileComparator extends FlutterGoldenFileComparator {
 
   @override
   Future<bool> compare(Uint8List imageBytes, Uri golden) async {
-    print(
-      'Skipping "$golden" test : $reason'
-    );
+    // Ideally we would use markTestSkipped here but in some situations,
+    // comparators are called outside of tests.
+    // See also: https://github.com/flutter/flutter/issues/91285
+    // ignore: avoid_print
+    print('Skipping "$golden" test: $reason');
     return true;
   }
 
@@ -469,7 +466,6 @@ class FlutterLocalFileComparator extends FlutterGoldenFileComparator with LocalC
     baseDirectory ??= FlutterGoldenFileComparator.getBaseDirectory(
       defaultComparator,
       platform,
-      local: true,
     );
 
     if(!baseDirectory.existsSync()) {
@@ -507,8 +503,13 @@ class FlutterLocalFileComparator extends FlutterGoldenFileComparator with LocalC
     testExpectation = await skiaClient.getExpectationForTest(testName);
 
     if (testExpectation == null || testExpectation.isEmpty) {
-      // There is no baseline for this test
-      print('No expectations provided by Skia Gold for test: $golden. '
+      // There is no baseline for this test.
+      // Ideally we would use markTestSkipped here but in some situations,
+      // comparators are called outside of tests.
+      // See also: https://github.com/flutter/flutter/issues/91285
+      // ignore: avoid_print
+      print(
+        'No expectations provided by Skia Gold for test: $golden. '
         'This may be a new test. If this is an unexpected result, check '
         'https://flutter-gold.skia.org.\n'
         'Validate image output found at $basedir'

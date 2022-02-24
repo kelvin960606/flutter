@@ -15,8 +15,8 @@ class BottomAppBarDemo extends StatefulWidget {
   State createState() => _BottomAppBarDemoState();
 }
 
-// Flutter generally frowns upon abbrevation however this class uses two
-// abbrevations extensively: "fab" for floating action button, and "bab"
+// Flutter generally frowns upon abbreviation however this class uses two
+// abbreviations extensively: "fab" for floating action button, and "bab"
 // for bottom application bar.
 
 class _BottomAppBarDemoState extends State<BottomAppBarDemo> {
@@ -27,7 +27,6 @@ class _BottomAppBarDemoState extends State<BottomAppBarDemo> {
   static const _ChoiceValue<Widget> kNoFab = _ChoiceValue<Widget>(
     title: 'None',
     label: 'do not show a floating action button',
-    value: null,
   );
 
   static const _ChoiceValue<Widget> kCircularFab = _ChoiceValue<Widget>(
@@ -35,8 +34,8 @@ class _BottomAppBarDemoState extends State<BottomAppBarDemo> {
     label: 'circular floating action button',
     value: FloatingActionButton(
       onPressed: _showSnackbar,
-      child: Icon(Icons.add, semanticLabel: 'Action'),
       backgroundColor: Colors.orange,
+      child: Icon(Icons.add, semanticLabel: 'Action'),
     ),
   );
 
@@ -431,6 +430,7 @@ class _DiamondFab extends StatelessWidget {
     return Material(
       shape: const _DiamondBorder(),
       color: Colors.orange,
+      elevation: 6.0,
       child: InkWell(
         onTap: onPressed,
         child: SizedBox(
@@ -442,7 +442,6 @@ class _DiamondFab extends StatelessWidget {
           ),
         ),
       ),
-      elevation: 6.0,
     );
   }
 }

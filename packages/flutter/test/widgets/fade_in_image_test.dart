@@ -43,14 +43,13 @@ class FadeInImageParts {
 }
 
 class FadeInImageElements {
-  const FadeInImageElements(this.rawImageElement, this.fadeTransitionElement);
+  const FadeInImageElements(this.rawImageElement);
 
   final Element rawImageElement;
-  final Element? fadeTransitionElement;
 
   RawImage get rawImage => rawImageElement.widget as RawImage;
-  FadeTransition? get fadeTransition => fadeTransitionElement?.widget as FadeTransition?;
-  double get opacity => fadeTransition == null ? 1 : fadeTransition!.opacity.value;
+  double get opacity => rawImage.opacity?.value ?? 1.0;
+  BoxFit? get fit => rawImage.fit;
 }
 
 class LoadTestImageProvider extends ImageProvider<Object> {
@@ -78,11 +77,8 @@ FadeInImageParts findFadeInImage(WidgetTester tester) {
   final Iterable<Element> rawImageElements = tester.elementList(find.byType(RawImage));
   ComponentElement? fadeInImageElement;
   for (final Element rawImageElement in rawImageElements) {
-    Element? fadeTransitionElement;
     rawImageElement.visitAncestorElements((Element ancestor) {
-      if (ancestor.widget is FadeTransition) {
-        fadeTransitionElement = ancestor;
-      } else if (ancestor.widget is FadeInImage) {
+      if (ancestor.widget is FadeInImage) {
         if (fadeInImageElement == null) {
           fadeInImageElement = ancestor as ComponentElement;
         } else {
@@ -93,7 +89,7 @@ FadeInImageParts findFadeInImage(WidgetTester tester) {
       return true;
     });
     expect(fadeInImageElement, isNotNull);
-    elements.add(FadeInImageElements(rawImageElement, fadeTransitionElement));
+    elements.add(FadeInImageElements(rawImageElement));
   }
   if (elements.length == 2) {
     return FadeInImageParts(fadeInImageElement!, elements.last, elements.first);
@@ -163,7 +159,7 @@ Future<void> main() async {
     testWidgets('shows a cached image immediately when skipFadeOnSynchronousLoad=true', (WidgetTester tester) async {
       final TestImageProvider placeholderProvider = TestImageProvider(placeholderImage);
       final TestImageProvider imageProvider = TestImageProvider(targetImage);
-      imageProvider.resolve(FakeImageConfiguration());
+      imageProvider.resolve(ImageConfiguration.empty);
       imageProvider.complete();
 
       await tester.pumpWidget(FadeInImage(
@@ -438,6 +434,37 @@ Future<void> main() async {
           await tester.pump(const Duration(milliseconds: 51));
           expect(semanticsWidget().properties.label, isEmpty);
         });
+      });
+    });
+
+    group("placeholder's BoxFit", () {
+      testWidgets("should be the image's BoxFit when not set", (WidgetTester tester) async {
+        final TestImageProvider placeholderProvider = TestImageProvider(placeholderImage);
+        final TestImageProvider imageProvider = TestImageProvider(targetImage);
+
+        await tester.pumpWidget(FadeInImage(
+          placeholder: placeholderProvider,
+          image: imageProvider,
+          fit: BoxFit.cover,
+        ));
+
+        expect(findFadeInImage(tester).placeholder!.fit, equals(findFadeInImage(tester).target.fit));
+        expect(findFadeInImage(tester).placeholder!.fit, equals(BoxFit.cover));
+      });
+
+      testWidgets('should be the given value when set', (WidgetTester tester) async {
+        final TestImageProvider placeholderProvider = TestImageProvider(placeholderImage);
+        final TestImageProvider imageProvider = TestImageProvider(targetImage);
+
+        await tester.pumpWidget(FadeInImage(
+          placeholder: placeholderProvider,
+          image: imageProvider,
+          fit: BoxFit.cover,
+          placeholderFit: BoxFit.fill,
+        ));
+
+        expect(findFadeInImage(tester).target.fit, equals(BoxFit.cover));
+        expect(findFadeInImage(tester).placeholder!.fit, equals(BoxFit.fill));
       });
     });
   });

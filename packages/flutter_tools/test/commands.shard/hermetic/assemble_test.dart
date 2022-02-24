@@ -14,13 +14,13 @@ import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/commands/assemble.dart';
 import 'package:flutter_tools/src/convert.dart';
 import 'package:flutter_tools/src/features.dart';
-import 'package:flutter_tools/src/globals_null_migrated.dart' as globals;
+import 'package:flutter_tools/src/globals.dart' as globals;
 
 import '../../src/common.dart';
 import '../../src/context.dart';
 import '../../src/fakes.dart';
+import '../../src/test_build_system.dart';
 import '../../src/test_flutter_command_runner.dart';
-import '../../src/testbed.dart';
 
 void main() {
   Cache.disableLocking();
@@ -75,7 +75,7 @@ void main() {
     final AssembleCommand command = AssembleCommand(
         buildSystem: TestBuildSystem.all(BuildResult(success: true)));
     final CommandRunner<void> commandRunner = createTestCommandRunner(command);
-    await commandRunner.run(<String>['assemble', '-o Output', '-dTargetPlatform=darwin-x64', 'debug_macos_bundle_flutter_assets']);
+    await commandRunner.run(<String>['assemble', '-o Output', '-dTargetPlatform=darwin', '-dDarwinArchs=x86_64', 'debug_macos_bundle_flutter_assets']);
 
     expect(await command.requiredArtifacts, <DevelopmentArtifact>{
       DevelopmentArtifact.macOS,

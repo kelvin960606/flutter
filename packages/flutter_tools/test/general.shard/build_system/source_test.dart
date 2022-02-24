@@ -13,7 +13,7 @@ import 'package:flutter_tools/src/build_system/exceptions.dart';
 import 'package:flutter_tools/src/globals.dart' as globals;
 
 import '../../src/common.dart';
-import '../../src/context.dart';
+import '../../src/fake_process_manager.dart';
 import '../../src/testbed.dart';
 
 final Platform windowsPlatform = FakePlatform(
@@ -36,8 +36,8 @@ void main() {
         artifacts: globals.artifacts, // using real artifacts
         processManager: FakeProcessManager.any(),
         fileSystem: globals.fs,
+        // engineVersion being null simulates a local engine.
         logger: globals.logger,
-        engineVersion: null, // simulate a local engine.
       );
       visitor = SourceVisitor(environment);
       environment.buildDir.createSync(recursive: true);

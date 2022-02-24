@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_test/flutter_test.dart';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
 
@@ -141,8 +143,8 @@ void main() {
         final List<Widget> slivers = <Widget>[
           sliverBox,
           SliverFillRemaining(
-            child: Container(color: Colors.white),
             hasScrollBody: false,
+            child: Container(color: Colors.white),
           ),
         ];
 
@@ -257,7 +259,6 @@ void main() {
               key: key,
               color: Colors.blue[300],
               child: Align(
-                alignment: Alignment.center,
                 child: Padding(
                   padding: const EdgeInsets.all(50.0),
                   child: ElevatedButton(
@@ -295,13 +296,12 @@ void main() {
               children: <Widget>[
                 const Flexible(
                   child: Center(child: FlutterLogo(size: 100)),
-                  fit: FlexFit.loose,
                 ),
                 ElevatedButton(
                   child: const Text('Bottom'),
                   onPressed: () {},
                 ),
-              ]
+              ],
             ),
           ),
         ];
@@ -322,10 +322,11 @@ void main() {
         expect(tester.getCenter(logo), Offset(400.0, 351.0 - density.vertical * 2.0));
 
         // Also check that the button alignment is true to expectations
+        // Buttons do not decrease their horizontal padding per the VisualDensity.
         final Finder button = find.byType(ElevatedButton);
         expect(
           tester.renderObject<RenderBox>(button).size,
-          Size(116.0 + density.horizontal * 8.0, 48.0 + density.vertical * 4.0),
+          Size(116.0 + math.max(0, density.horizontal) * 8.0, 48.0 + density.vertical * 4.0),
         );
         expect(tester.getBottomLeft(button).dy, equals(600.0));
         expect(tester.getCenter(button).dx, equals(400.0));
@@ -344,7 +345,8 @@ void main() {
         expect(tester.getCenter(logo).dy, lessThan(351.0));
         expect(
           tester.renderObject<RenderBox>(button).size,
-          Size(116.0 + density.horizontal * 8.0, 48.0 + density.vertical * 4.0),
+          // Buttons do not decrease their horizontal padding per the VisualDensity.
+          Size(116.0 + math.max(0, density.horizontal) * 8.0, 48.0 + density.vertical * 4.0),
         );
         expect(tester.getBottomLeft(button).dy, lessThan(600.0));
         expect(tester.getCenter(button).dx, equals(400.0));
@@ -444,7 +446,6 @@ void main() {
                 key: key,
                 color: Colors.blue[300],
                 child: Align(
-                  alignment: Alignment.center,
                   child: Padding(
                     padding: const EdgeInsets.all(50.0),
                     child: ElevatedButton(
@@ -565,13 +566,12 @@ void main() {
                 children: <Widget>[
                   const Flexible(
                     child: Center(child: FlutterLogo(size: 100)),
-                    fit: FlexFit.loose,
                   ),
                   ElevatedButton(
                     child: const Text('Bottom'),
                     onPressed: () {},
                   ),
-                ]
+                ],
               ),
             ),
           ];
@@ -592,10 +592,11 @@ void main() {
           expect(tester.getCenter(logo), Offset(400.0, 351.0 - density.vertical * 2.0));
 
           // Also check that the button alignment is true to expectations.
+          // Buttons do not decrease their horizontal padding per the VisualDensity.
           final Finder button = find.byType(ElevatedButton);
           expect(
             tester.renderObject<RenderBox>(button).size,
-            Size(116.0 + density.horizontal * 8.0, 48.0 + density.vertical * 4.0),
+            Size(116.0 + math.max(0, density.horizontal) * 8.0, 48.0 + density.vertical * 4.0),
           );
           expect(tester.getBottomLeft(button).dy, equals(600.0));
           expect(tester.getCenter(button).dx, equals(400.0));
@@ -616,7 +617,8 @@ void main() {
           expect(tester.getCenter(logo).dy, lessThan(351.0));
           expect(
             tester.renderObject<RenderBox>(button).size,
-            Size(116.0 + density.horizontal * 8.0, 48.0 + density.vertical * 4.0),
+            // Buttons do not decrease their horizontal padding per the VisualDensity.
+            Size(116.0 + math.max(0, density.horizontal) * 8.0, 48.0 + density.vertical * 4.0),
           );
           expect(tester.getBottomLeft(button).dy, equals(600.0));
           expect(tester.getCenter(button).dx, equals(400.0));
@@ -635,7 +637,8 @@ void main() {
           expect(tester.getCenter(logo), Offset(400.0, 351.0 - density.vertical * 2.0));
           expect(
             tester.renderObject<RenderBox>(button).size,
-            Size(116.0 + density.horizontal * 8.0, 48.0 + density.vertical * 4.0),
+            // Buttons do not decrease their horizontal padding per the VisualDensity.
+            Size(116.0 + math.max(0, density.horizontal) * 8.0, 48.0 + density.vertical * 4.0),
           );
           expect(tester.getBottomLeft(button).dy, equals(600.0));
           expect(tester.getCenter(button).dx, equals(400.0));
@@ -721,7 +724,6 @@ void main() {
                 key: key,
                 color: Colors.blue[300],
                 child: Align(
-                  alignment: Alignment.center,
                   child: Padding(
                     padding: const EdgeInsets.all(50.0),
                     child: ElevatedButton(

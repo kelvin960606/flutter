@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter/rendering.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../widgets/semantics_tester.dart';
@@ -143,7 +143,7 @@ void main() {
 
     // Default drawerScrimColor
 
-    await tester.pumpWidget(buildFrame(drawerScrimColor: null));
+    await tester.pumpWidget(buildFrame());
     scaffoldKey.currentState!.openDrawer();
     await tester.pumpAndSettle();
 

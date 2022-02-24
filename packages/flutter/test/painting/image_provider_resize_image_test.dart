@@ -87,7 +87,7 @@ void main() {
   test('ResizeImage takes one dim', () async {
     final Uint8List bytes = Uint8List.fromList(kTransparentImage);
     final MemoryImage memoryImage = MemoryImage(bytes);
-    final ResizeImage resizeImage = ResizeImage(memoryImage, width: 10, height: null);
+    final ResizeImage resizeImage = ResizeImage(memoryImage, width: 10);
     expect(resizeImage.width, 10);
     expect(resizeImage.height, null);
     expect(resizeImage.imageProvider, memoryImage);
@@ -136,8 +136,10 @@ void main() {
   });
 }
 
-Future<Size> _resolveAndGetSize(ImageProvider imageProvider,
-    {ImageConfiguration configuration = ImageConfiguration.empty}) async {
+Future<Size> _resolveAndGetSize(
+  ImageProvider imageProvider, {
+  ImageConfiguration configuration = ImageConfiguration.empty,
+}) async {
   final ImageStream stream = imageProvider.resolve(configuration);
   final Completer<Size> completer = Completer<Size>();
   final ImageStreamListener listener =

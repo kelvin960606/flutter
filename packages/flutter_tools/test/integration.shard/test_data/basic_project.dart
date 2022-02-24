@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import 'project.dart';
 
 class BasicProject extends Project {
@@ -53,6 +51,112 @@ class BasicProject extends Project {
 
   Uri get topLevelFunctionBreakpointUri => mainDart;
   int get topLevelFunctionBreakpointLine => lineContaining(main, '// TOP LEVEL BREAKPOINT');
+}
+
+/// A project that throws multiple exceptions during Widget builds.
+///
+/// A repro for the issue at https://github.com/Dart-Code/Dart-Code/issues/3448
+/// where Hot Restart could become stuck on exceptions and never complete.
+class BasicProjectThatThrows extends Project {
+
+  @override
+  final String pubspec = '''
+  name: test
+  environment:
+    sdk: ">=2.12.0-0 <3.0.0"
+
+  dependencies:
+    flutter:
+      sdk: flutter
+  ''';
+
+  @override
+  final String main = r'''
+  import 'package:flutter/material.dart';
+
+  void a() {
+    throw Exception('a');
+  }
+
+  void b() {
+    try {
+      a();
+    } catch (e) {
+      throw Exception('b');
+    }
+  }
+
+  void c() {
+    try {
+      b();
+    } catch (e) {
+      throw Exception('c');
+    }
+  }
+
+  void main() {
+    runApp(App());
+  }
+
+  class App extends StatelessWidget {
+    @override
+    Widget build(BuildContext context) {
+      c();
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Study Flutter',
+        theme: ThemeData(
+          primarySwatch: Colors.green,
+        ),
+        home: Container(),
+      );
+    }
+  }
+  ''';
+}
+
+class BasicProjectWithTimelineTraces extends Project {
+  @override
+  final String pubspec = '''
+  name: test
+  environment:
+    sdk: ">=2.12.0-0 <3.0.0"
+
+  dependencies:
+    flutter:
+      sdk: flutter
+  ''';
+
+  @override
+  final String main = r'''
+  import 'dart:async';
+  import 'dart:developer';
+
+  import 'package:flutter/material.dart';
+
+  Future<void> main() async {
+    while (true) {
+      runApp(new MyApp());
+      await Future.delayed(const Duration(milliseconds: 50));
+      Timeline.instantSync('main');
+    }
+  }
+
+  class MyApp extends StatelessWidget {
+    @override
+    Widget build(BuildContext context) {
+      topLevelFunction();
+      return new MaterialApp( // BUILD BREAKPOINT
+        title: 'Flutter Demo',
+        home: new Container(),
+      );
+    }
+  }
+
+  topLevelFunction() {
+    print("topLevelFunction"); // TOP LEVEL BREAKPOINT
+  }
+  ''';
 }
 
 class BasicProjectWithFlutterGen extends Project {

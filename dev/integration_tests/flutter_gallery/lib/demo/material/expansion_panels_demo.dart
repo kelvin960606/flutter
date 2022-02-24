@@ -182,7 +182,7 @@ class ExpansionPanelsDemo extends StatefulWidget {
   static const String routeName = '/material/expansion_panels';
 
   @override
-  _ExpansionPanelsDemoState createState() => _ExpansionPanelsDemoState();
+  State<ExpansionPanelsDemo> createState() => _ExpansionPanelsDemoState();
 }
 
 class _ExpansionPanelsDemoState extends State<ExpansionPanelsDemo> {
@@ -308,7 +308,6 @@ class _ExpansionPanelsDemoState extends State<ExpansionPanelsDemo> {
                         // Allow room for the value indicator.
                         padding: const EdgeInsets.only(top: 44.0),
                         child: Slider(
-                          min: 0.0,
                           max: 100.0,
                           divisions: 5,
                           activeColor: Colors.orange[100 + (field.value! * 5.0).round()],

@@ -47,7 +47,7 @@ class VisualStudio {
   /// The name of the Visual Studio install.
   ///
   /// For instance: "Visual Studio Community 2019".
-  String get displayName => _bestVisualStudioDetails[_displayNameKey] as String;
+  String? get displayName => _bestVisualStudioDetails[_displayNameKey] as String?;
 
   /// The user-friendly version number of the Visual Studio install.
   ///
@@ -56,16 +56,16 @@ class VisualStudio {
     if (_bestVisualStudioDetails[_catalogKey] == null) {
       return null;
     }
-    return _bestVisualStudioDetails[_catalogKey][_catalogDisplayVersionKey] as String;
+    return (_bestVisualStudioDetails[_catalogKey] as Map<String, dynamic>)[_catalogDisplayVersionKey] as String?;
   }
 
   /// The directory where Visual Studio is installed.
-  String get installLocation => _bestVisualStudioDetails[_installationPathKey] as String;
+  String? get installLocation => _bestVisualStudioDetails[_installationPathKey] as String?;
 
   /// The full version of the Visual Studio install.
   ///
   /// For instance: "15.4.27004.2002".
-  String get fullVersion => _bestVisualStudioDetails[_fullVersionKey] as String;
+  String? get fullVersion => _bestVisualStudioDetails[_fullVersionKey] as String?;
 
   // Properties that determine the status of the installation. There might be
   // Visual Studio versions that don't include them, so default to a "valid" value to
@@ -91,7 +91,7 @@ class VisualStudio {
     return _bestVisualStudioDetails[_isLaunchableKey] as bool? ?? true;
   }
 
-    /// True if the Visual Studio installation is as pre-release version.
+  /// True if the Visual Studio installation is as pre-release version.
   bool get isPrerelease => _bestVisualStudioDetails[_isPrereleaseKey] as bool? ?? false;
 
   /// True if a reboot is required to complete the Visual Studio installation.
@@ -151,7 +151,7 @@ class VisualStudio {
   /// the components necessary to build.
   String? get cmakePath {
     final Map<String, dynamic> details = _usableVisualStudioDetails;
-    if (details.isEmpty) {
+    if (details.isEmpty || _usableVisualStudioDetails[_installationPathKey] == null) {
       return null;
     }
     return _fileSystem.path.joinAll(<String>[
@@ -167,8 +167,21 @@ class VisualStudio {
     ]);
   }
 
+  /// The generator string to pass to CMake to select this Visual Studio
+  /// version.
+  String? get cmakeGenerator {
+    // From https://cmake.org/cmake/help/v3.22/manual/cmake-generators.7.html#visual-studio-generators
+    switch (_majorVersion) {
+      case 17:
+        return 'Visual Studio 17 2022';
+      case 16:
+      default:
+        return 'Visual Studio 16 2019';
+    }
+  }
+
   /// The major version of the Visual Studio install, as an integer.
-  int? get _majorVersion => fullVersion != null ? int.tryParse(fullVersion.split('.')[0]) : null;
+  int? get _majorVersion => fullVersion != null ? int.tryParse(fullVersion!.split('.')[0]) : null;
 
   /// The path to vswhere.exe.
   ///
@@ -348,11 +361,7 @@ class VisualStudio {
   ///
   /// If no installation is found, the cached VS details are set to an empty map
   /// to avoid repeating vswhere queries that have already not found an installation.
-  Map<String, dynamic>? _cachedUsableVisualStudioDetails;
-  Map<String, dynamic> get _usableVisualStudioDetails {
-    if (_cachedUsableVisualStudioDetails != null) {
-      return _cachedUsableVisualStudioDetails!;
-    }
+  late final Map<String, dynamic> _usableVisualStudioDetails = (){
     final List<String> minimumVersionArguments = <String>[
       _vswhereMinVersionArgument,
       _minimumSupportedVersion.toString(),
@@ -370,16 +379,16 @@ class VisualStudio {
       }
     }
 
+    Map<String, dynamic>? usableVisualStudioDetails;
     if (visualStudioDetails != null) {
       if (installationHasIssues(visualStudioDetails)) {
         _cachedAnyVisualStudioDetails = visualStudioDetails;
       } else {
-        _cachedUsableVisualStudioDetails = visualStudioDetails;
+        usableVisualStudioDetails = visualStudioDetails;
       }
     }
-    _cachedUsableVisualStudioDetails ??= <String, dynamic>{};
-    return _cachedUsableVisualStudioDetails!;
-  }
+    return usableVisualStudioDetails ?? <String, dynamic>{};
+  }();
 
   /// Returns the details dictionary of the latest version of Visual Studio,
   /// regardless of components and version, or {} if no such installation is

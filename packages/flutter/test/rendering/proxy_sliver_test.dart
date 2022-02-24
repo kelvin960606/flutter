@@ -14,11 +14,10 @@ void main() {
       opacity: 0.0,
       sliver: RenderSliverToBoxAdapter(
         child: RenderSizedBox(const Size(1.0, 1.0)), // size doesn't matter
-      )
+      ),
     );
 
     final RenderViewport root = RenderViewport(
-      axisDirection: AxisDirection.down,
       crossAxisDirection: AxisDirection.right,
       offset: ViewportOffset.zero(),
       cacheExtent: 250.0,
@@ -29,16 +28,14 @@ void main() {
     expect(renderSliverOpacity.needsCompositing, false);
   });
 
-  test('RenderSliverOpacity does not composite if it is opaque', () {
+  test('RenderSliverOpacity does composite if it is opaque', () {
     final RenderSliverOpacity renderSliverOpacity = RenderSliverOpacity(
-      opacity: 1.0,
       sliver: RenderSliverToBoxAdapter(
         child: RenderSizedBox(const Size(1.0, 1.0)), // size doesn't matter
-      )
+      ),
     );
 
     final RenderViewport root = RenderViewport(
-      axisDirection: AxisDirection.down,
       crossAxisDirection: AxisDirection.right,
       offset: ViewportOffset.zero(),
       cacheExtent: 250.0,
@@ -46,22 +43,21 @@ void main() {
     );
 
     layout(root, phase: EnginePhase.composite);
-    expect(renderSliverOpacity.needsCompositing, false);
+    expect(renderSliverOpacity.needsCompositing, true);
   });
   test('RenderSliverOpacity reuses its layer', () {
     final RenderSliverOpacity renderSliverOpacity = RenderSliverOpacity(
       opacity: 0.5,
       sliver: RenderSliverToBoxAdapter(
         child: RenderSizedBox(const Size(1.0, 1.0)), // size doesn't matter
-      )
+      ),
     );
 
     final RenderViewport root = RenderViewport(
-      axisDirection: AxisDirection.down,
       crossAxisDirection: AxisDirection.right,
       offset: ViewportOffset.zero(),
       cacheExtent: 250.0,
-      children: <RenderSliver>[renderSliverOpacity]
+      children: <RenderSliver>[renderSliverOpacity],
     );
 
     expect(renderSliverOpacity.debugLayer, null);
@@ -83,15 +79,13 @@ void main() {
     )..value = 0.0;
 
     final RenderSliverAnimatedOpacity renderSliverAnimatedOpacity = RenderSliverAnimatedOpacity(
-      alwaysIncludeSemantics: false,
       opacity: opacityAnimation,
       sliver: RenderSliverToBoxAdapter(
         child: RenderSizedBox(const Size(1.0, 1.0)), // size doesn't matter
-      )
+      ),
     );
 
     final RenderViewport root = RenderViewport(
-      axisDirection: AxisDirection.down,
       crossAxisDirection: AxisDirection.right,
       offset: ViewportOffset.zero(),
       cacheExtent: 250.0,
@@ -102,21 +96,19 @@ void main() {
     expect(renderSliverAnimatedOpacity.needsCompositing, false);
   });
 
-  test('RenderSliverAnimatedOpacity does not composite if it is opaque', () {
+  test('RenderSliverAnimatedOpacity does composite if it is opaque', () {
     final Animation<double> opacityAnimation = AnimationController(
       vsync: FakeTickerProvider(),
     )..value = 1.0;
 
     final RenderSliverAnimatedOpacity renderSliverAnimatedOpacity = RenderSliverAnimatedOpacity(
-      alwaysIncludeSemantics: false,
       opacity: opacityAnimation,
       sliver: RenderSliverToBoxAdapter(
         child: RenderSizedBox(const Size(1.0, 1.0)), // size doesn't matter
-      )
+      ),
     );
 
     final RenderViewport root = RenderViewport(
-      axisDirection: AxisDirection.down,
       crossAxisDirection: AxisDirection.right,
       offset: ViewportOffset.zero(),
       cacheExtent: 250.0,
@@ -124,7 +116,7 @@ void main() {
     );
 
     layout(root, phase: EnginePhase.composite);
-    expect(renderSliverAnimatedOpacity.needsCompositing, false);
+    expect(renderSliverAnimatedOpacity.needsCompositing, true);
   });
 
   test('RenderSliverAnimatedOpacity reuses its layer', () {
@@ -136,15 +128,14 @@ void main() {
       opacity: opacityAnimation,
       sliver: RenderSliverToBoxAdapter(
         child: RenderSizedBox(const Size(1.0, 1.0)), // size doesn't matter
-      )
+      ),
     );
 
     final RenderViewport root = RenderViewport(
-      axisDirection: AxisDirection.down,
       crossAxisDirection: AxisDirection.right,
       offset: ViewportOffset.zero(),
       cacheExtent: 250.0,
-      children: <RenderSliver>[renderSliverAnimatedOpacity]
+      children: <RenderSliver>[renderSliverAnimatedOpacity],
     );
 
     expect(renderSliverAnimatedOpacity.debugLayer, null);

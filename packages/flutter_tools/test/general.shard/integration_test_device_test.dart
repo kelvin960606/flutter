@@ -11,9 +11,9 @@ import 'package:flutter_tools/src/device.dart';
 import 'package:flutter_tools/src/test/integration_test_device.dart';
 import 'package:flutter_tools/src/test/test_device.dart';
 import 'package:flutter_tools/src/vmservice.dart';
+import 'package:stream_channel/stream_channel.dart';
 import 'package:vm_service/vm_service.dart' as vm_service;
 
-import '../src/common.dart';
 import '../src/context.dart';
 import '../src/fake_devices.dart';
 import '../src/fake_vm_services.dart';
@@ -164,7 +164,7 @@ void main() {
         'ephemeral',
         'ephemeral',
         type: PlatformType.android,
-        launchResult: LaunchResult.succeeded(observatoryUri: null),
+        launchResult: LaunchResult.succeeded(),
       ),
       debuggingOptions: DebuggingOptions.enabled(
         BuildInfo.debug,
@@ -210,6 +210,23 @@ void main() {
       PrintStructuredErrorLogMethod printStructuredErrorLogMethod,
       io.CompressionOptions compression,
       Device device,
+    }) async => fakeVmServiceHost.vmService,
+  });
+
+  testUsingContext('Can handle closing of the VM service', () async {
+    final StreamChannel<String> channel = await testDevice.start('entrypointPath');
+    await fakeVmServiceHost.vmService.dispose();
+    expect(await channel.stream.isEmpty, true);
+  }, overrides: <Type, Generator>{
+    VMServiceConnector: () => (Uri httpUri, {
+      ReloadSources reloadSources,
+      Restart restart,
+      CompileExpression compileExpression,
+      GetSkSLMethod getSkSLMethod,
+      PrintStructuredErrorLogMethod printStructuredErrorLogMethod,
+      io.CompressionOptions compression,
+      Device device,
+      Logger logger,
     }) async => fakeVmServiceHost.vmService,
   });
 }
